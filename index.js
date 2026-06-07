@@ -319,7 +319,7 @@ if (message.content === '!roleing') {
       ]
     })
   }
-  if (message.content === '!sendrules') {
+if (message.content === '!sendrules') {
     if (!hasStaffRole(message)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
       flags: MessageFlags.IsComponentsV2,
@@ -349,6 +349,12 @@ if (message.content === '!roleing') {
             { type: ComponentType.TextDisplay, content: '### 9. No Exploiting or Cheating\nDon\'t discuss, share, or promote cheats, exploits, or hacks for RRL or any other game in this server. Keep it fair for everyone.' },
             { type: ComponentType.Separator },
             { type: ComponentType.TextDisplay, content: '### 10. Listen to Staff\nIf a staff member asks you to stop doing something, stop. If you disagree with a decision, bring it up calmly in the appropriate channel — don\'t argue in public or cause a scene.' },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: '### 11. No Server Cloning\nAttempting to clone or replicate the RRL Discord server is a violation of Discord\'s Terms of Service. If you encounter a server claiming to be Rec Room Legacy and the lead developer is not **@Kinetic1717**, it is not legitimate. Please report it to staff immediately.' },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: '### 12. Account Security\nRRL staff and developers will **never** ask for your password under any circumstances. Your credentials are securely hashed in our database upon registration. Do not share your password with anyone — if another person causes a violation while using your account, both accounts will be held responsible and banned accordingly.' },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: '### 13. In-Game Cheating & Cheat Distribution\n**First offense:** A 30-day in-game ban.\n**Second offense / Cheat distribution:** A permanent in-game ban with no possibility of appeal. Distributing cheats, hacks, or exploits to other players will result in an immediate permanent ban.' },
             { type: ComponentType.Separator },
             { type: ComponentType.TextDisplay, content: '*Failure to follow these rules will result in warnings, mutes, kicks, or bans depending on severity. Staff have the final say.\nIf you see something breaking the rules, ping or DM a staff member.*' }
           ]
