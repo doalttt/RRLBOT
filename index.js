@@ -192,51 +192,13 @@ client.on('messageCreate', async message => {
               type: ComponentType.Section,
               components: [
                 { type: ComponentType.TextDisplay, content: '## <:windowslogo:1495437600364826724> Steam / PC' },
-                { type: ComponentType.TextDisplay, content: 'Extract the downloaded zip file and run \n`VR.bat`, or\n`SCREENMODE.bat` Either one works!' }
+                { type: ComponentType.TextDisplay, content: 'Extract the downloaded zip file and run \n`StartInScreen.bat - to run in screenmode`, or\n`Recroom_Release.exe - to run in vr` \nEither one works!' }
               ],
               accessory: {
                 type: ComponentType.Button,
                 label: 'Download',
                 style: ButtonStyle.Link,
-                url: 'https://nothing.com',
-                emoji: { name: '💾' }
-              }
-            }
-          ]
-        },
-        {
-          type: ComponentType.Container,
-          components: [
-            {
-              type: ComponentType.Section,
-              components: [
-                { type: ComponentType.TextDisplay, content: '## <:androidlogo:1495438460297941002> META' },
-                { type: ComponentType.TextDisplay, content: 'Go to the download link and join the org, once done, install the game in your headset.' }
-              ],
-              accessory: {
-                type: ComponentType.Button,
-                label: 'Download',
-                style: ButtonStyle.Link,
-                url: 'https://nothing.com',
-                emoji: { name: '💾' }
-              }
-            }
-          ]
-        },
-        {
-          type: ComponentType.Container,
-          components: [
-            {
-              type: ComponentType.Section,
-              components: [
-                { type: ComponentType.TextDisplay, content: '## <:applelogo:1495438113034469417> iOS' },
-                { type: ComponentType.TextDisplay, content: 'No current build for iOS yet.' }
-              ],
-              accessory: {
-                type: ComponentType.Button,
-                label: 'Download',
-                style: ButtonStyle.Link,
-                url: 'https://nothing.com',
+                url: 'https://drive.google.com/file/d/1ykxW4vPHPJ8Kdxv2b8_jz7baKmfMjj8E/view',
                 emoji: { name: '💾' }
               }
             }
