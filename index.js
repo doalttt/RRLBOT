@@ -192,7 +192,7 @@ client.on('messageCreate', async message => {
               type: ComponentType.Section,
               components: [
                 { type: ComponentType.TextDisplay, content: '## <:windowslogo:1495437600364826724> Steam / PC' },
-                { type: ComponentType.TextDisplay, content: 'Extract the downloaded zip file and run \n`StartInScreen.bat - to run in screenmode`, or\n`Recroom_Release.exe - to run in vr` \nEither one works!' }
+                { type: ComponentType.TextDisplay, content: 'Extract the downloaded zip file and run \n`StartInScreen.bat - to run in screenmode`, \nor\n`Recroom_Release.exe - to run in vr` \nEither one works!' }
               ],
               accessory: {
                 type: ComponentType.Button,
