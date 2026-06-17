@@ -191,8 +191,9 @@ client.on('messageCreate', async message => {
             {
               type: ComponentType.Section,
               components: [
-                { type: ComponentType.TextDisplay, content: '## <:windowslogo:1495437600364826724> Steam / PC' },
-                { type: ComponentType.TextDisplay, content: 'Extract the downloaded zip file and run \n`StartInScreen.bat - to run in screenmode`, \nor\n`Recroom_Release.exe - to run in vr` \nEither one works!' }
+                { type: ComponentType.TextDisplay, content: '## <:Steam:1516698929448882327> Steam / PC' },
+                { type: ComponentType.TextDisplay, content: 'Extract the downloaded zip file and run \n`StartInScreen.bat - to run in screenmode`, \nor\n`Recroom_Release.exe - to run in vr` \nEither one works!' },
+                { type: ComponentType.TextDisplay, content: 'For linux you need to use steam proton by adding rrl as a steam game, ps. you need to add Recroom_Release.exe as a game from the rrl folder' }
               ],
               accessory: {
                 type: ComponentType.Button,
