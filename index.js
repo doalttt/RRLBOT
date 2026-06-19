@@ -961,6 +961,39 @@ if (message.content === '!sendrules') {
       ]
     })
   }
+  if (message.content === '!ticketrules') {
+    if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
+    await message.channel.send({
+      flags: MessageFlags.IsComponentsV2,
+      components: [
+        {
+          type: ComponentType.Container,
+          components: [
+            { type: ComponentType.TextDisplay, content: '# 🎫 Ticket Rules' },
+            { type: ComponentType.TextDisplay, content: '*Please follow these guidelines when opening or using a ticket.*' },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: '### 1. Be Patient\nStaff will respond as soon as they are available. Pinging staff repeatedly will not speed up your response time.' },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: '### 2. One Issue Per Ticket\nKeep each ticket focused on a single issue. Open a new ticket for unrelated matters instead of adding them to an existing one.' },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: '### 3. No Spamming or Abuse\nDo not spam messages, ping staff excessively, or use disrespectful language in your ticket. This can result in the ticket being closed without resolution.' },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: '### 4. Provide Clear Information\nInclude as much detail as possible, stuff like: screenshots , error messages, usernames, or steps to reproduce an issue all help staff assist you faster.' },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: '### 5. No False Reports\nSubmitting false reports, fake bug reports, or fake ban appeals to waste staff time will result in a warning or further action.' },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: '### 6. Maximum 3 Open Tickets\nYou may only have up to 3 tickets open at once. Close existing tickets before opening new ones.' },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: '### 7. Do Not Ticket Spam\nOpening and closing tickets repeatedly without genuine reason may result in a temporary block from creating new tickets.' },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: '### 8. No Information\nWhen opening ticket please say what you need help with as soon as you open your ticket, empty tickets will be closed with a warning.' },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: '*Failure to follow these rules may result in your ticket being closed early, a warning, or further moderation action.*' }
+          ]
+        }
+      ]
+    })
+  }
   if (message.content === '!ytchannels') {
     if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
