@@ -13,6 +13,7 @@ const client = new Client({
 
 const STAFF_ROLE_ID = '1491683467917000795'
 const DEV_ROLE_ID = '1491683215549923459'
+const SENIOR_STAFF_ROLE_ID = '1491683379194888366'
 const TICKET_CATEGORY_ID = '1517445573735612549'
 const TICKET_STAFF_ROLE = STAFF_ROLE_ID
 const TICKET_DEV_ROLE = DEV_ROLE_ID
@@ -62,6 +63,10 @@ function hasStaffRole(memberOrMessage) {
   return member.roles.cache.has(STAFF_ROLE_ID) || member.roles.cache.has(DEV_ROLE_ID)
 }
 
+function hasSeniorStaffRole(member) {
+  return member.roles.cache.has(SENIOR_STAFF_ROLE_ID) || member.roles.cache.has(DEV_ROLE_ID)
+}
+
 const commands = [
   new SlashCommandBuilder()
     .setName('update')
@@ -104,7 +109,17 @@ const commands = [
   new SlashCommandBuilder()
     .setName('unban')
     .setDescription('Unban a user by ID')
-    .addStringOption(option => option.setName('userid').setDescription('User ID to unban').setRequired(true))
+    .addStringOption(option => option.setName('userid').setDescription('User ID to unban').setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('kick')
+    .setDescription('Kick a user')
+    .addUserOption(option => option.setName('user').setDescription('User to kick').setRequired(true))
+    .addStringOption(option => option.setName('reason').setDescription('Reason for kick').setRequired(false)),
+  new SlashCommandBuilder()
+    .setName('message')
+    .setDescription('Send a plain DM to a user')
+    .addUserOption(option => option.setName('user').setDescription('User to message').setRequired(true))
+    .addStringOption(option => option.setName('content').setDescription('Message content').setRequired(true))
 ].map(command => command.toJSON())
 
 client.once('clientReady', async () => {
@@ -423,8 +438,8 @@ client.on('interactionCreate', async interaction => {
   }
 
   if (interaction.isChatInputCommand() && interaction.commandName === 'ban') {
-    if (!hasStaffRole(interaction.member)) {
-      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true })
+    if (!hasSeniorStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to use this command. Banning requires a higher staff role.', ephemeral: true })
     }
 
     const target = interaction.options.getUser('user')
@@ -457,8 +472,8 @@ client.on('interactionCreate', async interaction => {
   }
 
   if (interaction.isChatInputCommand() && interaction.commandName === 'unban') {
-    if (!hasStaffRole(interaction.member)) {
-      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true })
+    if (!hasSeniorStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to use this command. Unbanning requires a higher staff role.', ephemeral: true })
     }
 
     const userId = interaction.options.getString('userid')
@@ -468,6 +483,58 @@ client.on('interactionCreate', async interaction => {
       await interaction.reply({ content: `✅ Unbanned user with ID ${userId}.`, ephemeral: true })
     } catch (err) {
       await interaction.reply({ content: '❌ Failed to unban — check the user ID is correct and they are actually banned.', ephemeral: true })
+    }
+    return
+  }
+
+  if (interaction.isChatInputCommand() && interaction.commandName === 'kick') {
+    if (!hasStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true })
+    }
+
+    const target = interaction.options.getUser('user')
+    const reason = interaction.options.getString('reason') || 'No reason provided'
+
+    try {
+      try {
+        await target.send(`👢 You have been kicked from **${interaction.guild.name}**.\n**Reason:** ${reason}`)
+      } catch (err) {}
+
+      const member = await interaction.guild.members.fetch(target.id)
+      await member.kick(reason)
+
+      await interaction.reply({
+        flags: MessageFlags.IsComponentsV2,
+        components: [
+          {
+            type: ComponentType.Container,
+            components: [
+              { type: ComponentType.TextDisplay, content: `# 👢 User Kicked` },
+              { type: ComponentType.TextDisplay, content: `**User:** <@${target.id}>\n**Reason:** ${reason}\n**Issued by:** <@${interaction.user.id}>` }
+            ]
+          }
+        ]
+      })
+    } catch (err) {
+      console.error('Failed to kick:', err)
+      await interaction.reply({ content: '❌ Failed to kick this user. They may have a higher role than the bot.', ephemeral: true })
+    }
+    return
+  }
+
+  if (interaction.isChatInputCommand() && interaction.commandName === 'message') {
+    if (!hasStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true })
+    }
+
+    const target = interaction.options.getUser('user')
+    const content = interaction.options.getString('content')
+
+    try {
+      await target.send(content)
+      await interaction.reply({ content: `✅ Message sent to <@${target.id}>.`, ephemeral: true })
+    } catch (err) {
+      await interaction.reply({ content: '❌ Could not DM this user. They may have DMs disabled.', ephemeral: true })
     }
     return
   }
