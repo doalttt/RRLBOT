@@ -1,5 +1,6 @@
 const { Client, GatewayIntentBits, ComponentType, ButtonStyle, MessageFlags, REST, Routes, SlashCommandBuilder } = require('discord.js')
 require('dotenv').config()
+const fs = require('fs')
 
 const client = new Client({
   intents: [
@@ -17,6 +18,45 @@ const TICKET_STAFF_ROLE = STAFF_ROLE_ID
 const TICKET_DEV_ROLE = DEV_ROLE_ID
 const PING_ROLE_ID = '1495670066203590796'
 
+const WARNINGS_FILE = './warnings.json'
+
+function loadWarnings() {
+  try {
+    if (!fs.existsSync(WARNINGS_FILE)) return {}
+    return JSON.parse(fs.readFileSync(WARNINGS_FILE, 'utf8'))
+  } catch (err) {
+    console.error('Failed to load warnings:', err)
+    return {}
+  }
+}
+
+function saveWarnings(data) {
+  try {
+    fs.writeFileSync(WARNINGS_FILE, JSON.stringify(data, null, 2))
+  } catch (err) {
+    console.error('Failed to save warnings:', err)
+  }
+}
+
+function addWarning(userId, reason, modId) {
+  const data = loadWarnings()
+  if (!data[userId]) data[userId] = []
+  data[userId].push({ reason, modId, timestamp: Date.now() })
+  saveWarnings(data)
+  return data[userId].length
+}
+
+function getWarnings(userId) {
+  const data = loadWarnings()
+  return data[userId] || []
+}
+
+function clearWarnings(userId) {
+  const data = loadWarnings()
+  delete data[userId]
+  saveWarnings(data)
+}
+
 function hasStaffRole(memberOrMessage) {
   const member = memberOrMessage.member || memberOrMessage
   return member.roles.cache.has(STAFF_ROLE_ID) || member.roles.cache.has(DEV_ROLE_ID)
@@ -32,7 +72,39 @@ const commands = [
     .addStringOption(option => option.setName('extra').setDescription('Any extra info (optional)').setRequired(false)),
   new SlashCommandBuilder()
     .setName('ticketpanel')
-    .setDescription('Send the ticket creation panel')
+    .setDescription('Send the ticket creation panel'),
+  new SlashCommandBuilder()
+    .setName('warn')
+    .setDescription('Warn a user')
+    .addUserOption(option => option.setName('user').setDescription('User to warn').setRequired(true))
+    .addStringOption(option => option.setName('reason').setDescription('Reason for warning').setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('warnings')
+    .setDescription('View a user\'s warnings')
+    .addUserOption(option => option.setName('user').setDescription('User to check').setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('clearwarnings')
+    .setDescription('Clear all warnings for a user')
+    .addUserOption(option => option.setName('user').setDescription('User to clear').setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('mute')
+    .setDescription('Timeout a user')
+    .addUserOption(option => option.setName('user').setDescription('User to mute').setRequired(true))
+    .addIntegerOption(option => option.setName('minutes').setDescription('Duration in minutes').setRequired(true))
+    .addStringOption(option => option.setName('reason').setDescription('Reason for mute').setRequired(false)),
+  new SlashCommandBuilder()
+    .setName('unmute')
+    .setDescription('Remove timeout from a user')
+    .addUserOption(option => option.setName('user').setDescription('User to unmute').setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('ban')
+    .setDescription('Ban a user')
+    .addUserOption(option => option.setName('user').setDescription('User to ban').setRequired(true))
+    .addStringOption(option => option.setName('reason').setDescription('Reason for ban').setRequired(false)),
+  new SlashCommandBuilder()
+    .setName('unban')
+    .setDescription('Unban a user by ID')
+    .addStringOption(option => option.setName('userid').setDescription('User ID to unban').setRequired(true))
 ].map(command => command.toJSON())
 
 client.once('clientReady', async () => {
@@ -232,6 +304,174 @@ client.on('interactionCreate', async interaction => {
     return
   }
 
+  if (interaction.isChatInputCommand() && interaction.commandName === 'warn') {
+    if (!hasStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true })
+    }
+
+    const target = interaction.options.getUser('user')
+    const reason = interaction.options.getString('reason')
+    const count = addWarning(target.id, reason, interaction.user.id)
+
+    await interaction.reply({
+      flags: MessageFlags.IsComponentsV2,
+      components: [
+        {
+          type: ComponentType.Container,
+          components: [
+            { type: ComponentType.TextDisplay, content: `# ⚠️ Warning Issued` },
+            { type: ComponentType.TextDisplay, content: `**User:** <@${target.id}>\n**Reason:** ${reason}\n**Total Warnings:** ${count}\n**Issued by:** <@${interaction.user.id}>` }
+          ]
+        }
+      ]
+    })
+
+    try {
+      await target.send(`⚠️ You have been warned in **${interaction.guild.name}**.\n**Reason:** ${reason}\n**Total Warnings:** ${count}`)
+    } catch (err) {}
+    return
+  }
+
+  if (interaction.isChatInputCommand() && interaction.commandName === 'warnings') {
+    if (!hasStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true })
+    }
+
+    const target = interaction.options.getUser('user')
+    const warnings = getWarnings(target.id)
+
+    if (warnings.length === 0) {
+      return interaction.reply({ content: `<@${target.id}> has no warnings.`, ephemeral: true })
+    }
+
+    const list = warnings.map((w, i) => `**${i + 1}.** ${w.reason}\n*By <@${w.modId}> • <t:${Math.floor(w.timestamp / 1000)}:R>*`).join('\n\n')
+
+    await interaction.reply({
+      flags: MessageFlags.IsComponentsV2,
+      components: [
+        {
+          type: ComponentType.Container,
+          components: [
+            { type: ComponentType.TextDisplay, content: `# 📋 Warnings for <@${target.id}>` },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: list }
+          ]
+        }
+      ],
+      ephemeral: true
+    })
+    return
+  }
+
+  if (interaction.isChatInputCommand() && interaction.commandName === 'clearwarnings') {
+    if (!hasStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true })
+    }
+
+    const target = interaction.options.getUser('user')
+    clearWarnings(target.id)
+    return interaction.reply({ content: `✅ Cleared all warnings for <@${target.id}>.`, ephemeral: true })
+  }
+
+  if (interaction.isChatInputCommand() && interaction.commandName === 'mute') {
+    if (!hasStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true })
+    }
+
+    const target = interaction.options.getUser('user')
+    const minutes = interaction.options.getInteger('minutes')
+    const reason = interaction.options.getString('reason') || 'No reason provided'
+
+    try {
+      const member = await interaction.guild.members.fetch(target.id)
+      await member.timeout(minutes * 60 * 1000, reason)
+
+      await interaction.reply({
+        flags: MessageFlags.IsComponentsV2,
+        components: [
+          {
+            type: ComponentType.Container,
+            components: [
+              { type: ComponentType.TextDisplay, content: `# 🔇 User Muted` },
+              { type: ComponentType.TextDisplay, content: `**User:** <@${target.id}>\n**Duration:** ${minutes} minutes\n**Reason:** ${reason}\n**Issued by:** <@${interaction.user.id}>` }
+            ]
+          }
+        ]
+      })
+    } catch (err) {
+      console.error('Failed to mute:', err)
+      await interaction.reply({ content: '❌ Failed to mute this user. They may have a higher role than the bot.', ephemeral: true })
+    }
+    return
+  }
+
+  if (interaction.isChatInputCommand() && interaction.commandName === 'unmute') {
+    if (!hasStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true })
+    }
+
+    const target = interaction.options.getUser('user')
+
+    try {
+      const member = await interaction.guild.members.fetch(target.id)
+      await member.timeout(null)
+      await interaction.reply({ content: `✅ <@${target.id}> has been unmuted.`, ephemeral: true })
+    } catch (err) {
+      await interaction.reply({ content: '❌ Failed to unmute this user.', ephemeral: true })
+    }
+    return
+  }
+
+  if (interaction.isChatInputCommand() && interaction.commandName === 'ban') {
+    if (!hasStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true })
+    }
+
+    const target = interaction.options.getUser('user')
+    const reason = interaction.options.getString('reason') || 'No reason provided'
+
+    try {
+      try {
+        await target.send(`🔨 You have been banned from **${interaction.guild.name}**.\n**Reason:** ${reason}`)
+      } catch (err) {}
+
+      await interaction.guild.members.ban(target.id, { reason })
+
+      await interaction.reply({
+        flags: MessageFlags.IsComponentsV2,
+        components: [
+          {
+            type: ComponentType.Container,
+            components: [
+              { type: ComponentType.TextDisplay, content: `# 🔨 User Banned` },
+              { type: ComponentType.TextDisplay, content: `**User:** <@${target.id}> (${target.id})\n**Reason:** ${reason}\n**Issued by:** <@${interaction.user.id}>` }
+            ]
+          }
+        ]
+      })
+    } catch (err) {
+      console.error('Failed to ban:', err)
+      await interaction.reply({ content: '❌ Failed to ban this user. They may have a higher role than the bot.', ephemeral: true })
+    }
+    return
+  }
+
+  if (interaction.isChatInputCommand() && interaction.commandName === 'unban') {
+    if (!hasStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true })
+    }
+
+    const userId = interaction.options.getString('userid')
+
+    try {
+      await interaction.guild.members.unban(userId)
+      await interaction.reply({ content: `✅ Unbanned user with ID ${userId}.`, ephemeral: true })
+    } catch (err) {
+      await interaction.reply({ content: '❌ Failed to unban — check the user ID is correct and they are actually banned.', ephemeral: true })
+    }
+    return
+  }
+
   if (interaction.isChatInputCommand() && interaction.commandName === 'update') {
     if (!hasStaffRole(interaction.member)) {
       return interaction.reply({ content: 'You do not have permission to post updates.', ephemeral: true })
@@ -375,27 +615,6 @@ client.on('messageCreate', async message => {
                 url: 'https://drive.google.com/file/d/1ykxW4vPHPJ8Kdxv2b8_jz7baKmfMjj8E/view',
                 emoji: { name: '💾' }
               }
-            }
-          ]
-        }
-      ]
-    })
-  }
-
-  if (message.content === '!helping') {
-    await message.channel.send({
-      flags: MessageFlags.IsComponentsV2,
-      components: [
-        {
-          type: ComponentType.Container,
-          components: [
-            {
-              type: ComponentType.Section,
-              components: [
-                { type: ComponentType.TextDisplay, content: '# Speaking from legacy bot since invites are disabled on this server' },
-                { type: ComponentType.TextDisplay, content: 'I accidently left the server' },
-                { type: ComponentType.TextDisplay, content: 'dm me on discord @doalt and invite me back, faith is sleeping so i cant ask him' }
-              ],
             }
           ]
         }
