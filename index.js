@@ -9,39 +9,27 @@ const client = new Client({
     GatewayIntentBits.GuildMembers
   ]
 })
-
-const STAFF_ROLE_ID = '1491683215549923459'
-const DEV_ROLE_ID = '1491683819923701790'
+const TICKET_CATEGORY_ID = '1517445573735612549'
+const TICKET_STAFF_ROLE = 1491683467917000795
+const TICKET_DEV_ROLE = 1491683215549923459
 const PING_ROLE_ID = '1495670066203590796'
 
-function hasStaffRole(message) {
-  return message.member.roles.cache.has(STAFF_ROLE_ID) || message.member.roles.cache.has(DEV_ROLE_ID)
+function hasStaffRole(memberOrMessage) {
+  const member = memberOrMessage.member || memberOrMessage
+  return member.roles.cache.has(STAFF_ROLE_ID) || member.roles.cache.has(DEV_ROLE_ID)
 }
 
 const commands = [
   new SlashCommandBuilder()
     .setName('update')
     .setDescription('Post a game update')
-    .addStringOption(option =>
-      option.setName('title')
-        .setDescription('Title of the update')
-        .setRequired(true)
-    )
-    .addStringOption(option =>
-      option.setName('desc')
-        .setDescription('Description of the update')
-        .setRequired(true)
-    )
-    .addBooleanOption(option =>
-      option.setName('ping')
-        .setDescription('Ping update role?')
-        .setRequired(true)
-    )
-    .addStringOption(option =>
-      option.setName('extra')
-        .setDescription('Any extra info (optional)')
-        .setRequired(false)
-    )
+    .addStringOption(option => option.setName('title').setDescription('Title of the update').setRequired(true))
+    .addStringOption(option => option.setName('desc').setDescription('Description of the update').setRequired(true))
+    .addBooleanOption(option => option.setName('ping').setDescription('Ping update role?').setRequired(true))
+    .addStringOption(option => option.setName('extra').setDescription('Any extra info (optional)').setRequired(false)),
+  new SlashCommandBuilder()
+    .setName('ticketpanel')
+    .setDescription('Send the ticket creation panel')
 ].map(command => command.toJSON())
 
 client.once('clientReady', async () => {
@@ -66,6 +54,179 @@ client.on('interactionCreate', async interaction => {
       role_screenmode: '1497419559878262966',
       role_offtopic: '1499357606228136008'
     }
+
+  if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select') {
+    const ticketType = interaction.values[0]
+
+    const typeNames = {
+      reporting: 'Reporting',
+      help: 'Help',
+      exploit: 'Exploit Report',
+      bug: 'Bug Report',
+      appeal: 'Ban Appeal'
+    }
+
+    const guild = interaction.guild
+    const member = interaction.member
+    const category = guild.channels.cache.get(TICKET_CATEGORY_ID)
+
+    const existing = guild.channels.cache.find(c =>
+      c.topic === `ticket-${interaction.user.id}` && c.parentId === TICKET_CATEGORY_ID
+    )
+
+    if (existing) {
+      return interaction.reply({ content: `You already have an open ticket: ${existing}`, ephemeral: true })
+    }
+
+    const channel = await guild.channels.create({
+      name: `${ticketType}-${interaction.user.username}`,
+      parent: category ? category.id : null,
+      topic: `ticket-${interaction.user.id}`,
+      permissionOverwrites: [
+        { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
+        { id: interaction.user.id, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
+        { id: TICKET_STAFF_ROLE, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
+        { id: TICKET_DEV_ROLE, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] }
+      ]
+    })
+
+    await interaction.reply({ content: `Ticket created: ${channel}`, ephemeral: true })
+
+    await channel.send({
+      content: `<@${interaction.user.id}> <@&${TICKET_STAFF_ROLE}>`,
+      flags: MessageFlags.IsComponentsV2,
+      components: [
+        {
+          type: ComponentType.Container,
+          components: [
+            { type: ComponentType.TextDisplay, content: `# 🎫 ${typeNames[ticketType]} Ticket` },
+            { type: ComponentType.TextDisplay, content: `Opened by <@${interaction.user.id}>` },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: 'A staff member will be with you shortly. Please describe your issue in as much detail as possible.' },
+            { type: ComponentType.Separator },
+            {
+              type: ComponentType.ActionRow,
+              components: [
+                { type: ComponentType.Button, label: 'Close', style: ButtonStyle.Secondary, custom_id: 'ticket_close', emoji: { name: '🔒' } },
+                { type: ComponentType.Button, label: 'Close With Reason', style: ButtonStyle.Primary, custom_id: 'ticket_close_reason', emoji: { name: '📝' } },
+                { type: ComponentType.Button, label: 'Delete (Admin Only)', style: ButtonStyle.Danger, custom_id: 'ticket_delete', emoji: { name: '🗑️' } }
+              ]
+            }
+          ]
+        }
+      ]
+    })
+    return
+  }
+
+  if (interaction.isButton() && interaction.customId === 'ticket_close') {
+    const member = interaction.member
+    if (!member.roles.cache.has(TICKET_STAFF_ROLE) && !member.roles.cache.has(TICKET_DEV_ROLE)) {
+      return interaction.reply({ content: 'You do not have permission to close tickets.', ephemeral: true })
+    }
+
+    await interaction.reply({ content: '🔒 This ticket has been closed and will be archived in 5 seconds.' })
+    await interaction.channel.permissionOverwrites.edit(interaction.channel.guild.roles.everyone, { ViewChannel: false })
+
+    const ticketOwnerId = interaction.channel.topic?.replace('ticket-', '')
+    if (ticketOwnerId) {
+      await interaction.channel.permissionOverwrites.edit(ticketOwnerId, { ViewChannel: false }).catch(() => {})
+    }
+    return
+  }
+
+  if (interaction.isButton() && interaction.customId === 'ticket_close_reason') {
+    const member = interaction.member
+    if (!member.roles.cache.has(TICKET_STAFF_ROLE) && !member.roles.cache.has(TICKET_DEV_ROLE)) {
+      return interaction.reply({ content: 'You do not have permission to close tickets.', ephemeral: true })
+    }
+
+    await interaction.showModal({
+      title: 'Close Ticket With Reason',
+      custom_id: 'ticket_close_reason_modal',
+      components: [
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            {
+              type: ComponentType.TextInput,
+              custom_id: 'close_reason_input',
+              label: 'Reason for closing',
+              style: 2,
+              required: true,
+              max_length: 300
+            }
+          ]
+        }
+      ]
+    })
+    return
+  }
+
+  if (interaction.isButton() && interaction.customId === 'ticket_delete') {
+    const member = interaction.member
+    if (!member.permissions.has('Administrator')) {
+      return interaction.reply({ content: 'Only admins can delete tickets.', ephemeral: true })
+    }
+
+    await interaction.reply({ content: '🗑️ Deleting this ticket in 3 seconds...' })
+    setTimeout(() => {
+      interaction.channel.delete().catch(() => {})
+    }, 3000)
+    return
+  }
+
+  if (interaction.isModalSubmit() && interaction.customId === 'ticket_close_reason_modal') {
+    const reason = interaction.fields.getTextInputValue('close_reason_input')
+
+    await interaction.reply({ content: `🔒 Ticket closed.\n**Reason:** ${reason}` })
+    await interaction.channel.permissionOverwrites.edit(interaction.channel.guild.roles.everyone, { ViewChannel: false })
+
+    const ticketOwnerId = interaction.channel.topic?.replace('ticket-', '')
+    if (ticketOwnerId) {
+      await interaction.channel.permissionOverwrites.edit(ticketOwnerId, { ViewChannel: false }).catch(() => {})
+    }
+    return
+  }
+
+  if (interaction.isChatInputCommand() && interaction.commandName === 'ticketpanel') {
+    if (!hasStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true })
+    }
+
+    await interaction.reply({ content: '✅ Ticket panel sent!', ephemeral: true })
+    await interaction.channel.send({
+      flags: MessageFlags.IsComponentsV2,
+      components: [
+        {
+          type: ComponentType.Container,
+          components: [
+            { type: ComponentType.TextDisplay, content: '# 🎫 Open a Ticket' },
+            { type: ComponentType.TextDisplay, content: 'Select a category below that best fits your issue, and a private ticket channel will be created for you.' },
+            { type: ComponentType.Separator },
+            {
+              type: ComponentType.ActionRow,
+              components: [
+                {
+                  type: ComponentType.StringSelect,
+                  custom_id: 'ticket_select',
+                  placeholder: 'Select a ticket type...',
+                  options: [
+                    { label: 'Reporting', value: 'reporting', emoji: { name: '🚩' } },
+                    { label: 'Help', value: 'help', emoji: { name: '❓' } },
+                    { label: 'Exploit Report', value: 'exploit', emoji: { name: '⚠️' } },
+                    { label: 'Bug Report', value: 'bug', emoji: { name: '🐛' } },
+                    { label: 'Ban Appeal', value: 'appeal', emoji: { name: '⚖️' } }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    })
+    return
+  }
 
     const roleId = roleMap[interaction.customId]
     if (!roleId) return
@@ -181,7 +342,7 @@ client.on('messageCreate', async message => {
   if (message.author.bot) return
 
   if (message.content === '!sendembed') {
-    if (!hasStaffRole(message)) return message.reply({ content: 'You do not have permission to use this command.' })
+    if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
       flags: MessageFlags.IsComponentsV2,
       components: [
@@ -210,7 +371,7 @@ client.on('messageCreate', async message => {
   }
 
   if (message.content === '!sendcontrib') {
-    if (!hasStaffRole(message)) return message.reply({ content: 'You do not have permission to use this command.' })
+    if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
       flags: MessageFlags.IsComponentsV2,
       components: [
@@ -239,7 +400,7 @@ client.on('messageCreate', async message => {
   }
 
 if (message.content === '!roleing') {
-    if (!hasStaffRole(message)) return message.reply({ content: 'You do not have permission to use this command.' })
+    if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
       flags: MessageFlags.IsComponentsV2,
       components: [
@@ -283,7 +444,7 @@ if (message.content === '!roleing') {
     })
   }
 if (message.content === '!sendrules') {
-    if (!hasStaffRole(message)) return message.reply({ content: 'You do not have permission to use this command.' })
+    if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
       flags: MessageFlags.IsComponentsV2,
       components: [
@@ -326,7 +487,7 @@ if (message.content === '!sendrules') {
     })
   }
   if (message.content === '!formsupport') {
-    if (!hasStaffRole(message)) return message.reply({ content: 'You do not have permission to use this command.' })
+    if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
       flags: MessageFlags.IsComponentsV2,
       components: [
@@ -359,7 +520,7 @@ if (message.content === '!sendrules') {
     })
   }
   if (message.content === '!formlab') {
-    if (!hasStaffRole(message)) return message.reply({ content: 'You do not have permission to use this command.' })
+    if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
       flags: MessageFlags.IsComponentsV2,
       components: [
@@ -392,7 +553,7 @@ if (message.content === '!sendrules') {
     })
   }
     if (message.content === '!formmod') {
-    if (!hasStaffRole(message)) return message.reply({ content: 'You do not have permission to use this command.' })
+    if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
       flags: MessageFlags.IsComponentsV2,
       components: [
@@ -426,7 +587,7 @@ if (message.content === '!sendrules') {
   }
 
   if (message.content === '!vmodinfo') {
-    if (!hasStaffRole(message)) return message.reply({ content: 'You do not have permission to use this command.' })
+    if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
       flags: MessageFlags.IsComponentsV2,
       components: [
@@ -457,7 +618,7 @@ if (message.content === '!sendrules') {
     })
   }
   if (message.content === '!verifypanel') {
-    if (!hasStaffRole(message)) return message.reply({ content: 'You do not have permission to use this command.' })
+    if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
       flags: MessageFlags.IsComponentsV2,
       components: [
@@ -482,7 +643,7 @@ if (message.content === '!sendrules') {
     })
   }
   if (message.content === '!ytchannels') {
-    if (!hasStaffRole(message)) return message.reply({ content: 'You do not have permission to use this command.' })
+    if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
       flags: MessageFlags.IsComponentsV2,
       components: [
@@ -508,7 +669,7 @@ if (message.content === '!sendrules') {
     })
   }
   if (message.content === '!eventinfo') {
-    if (!hasStaffRole(message)) return message.reply({ content: 'You do not have permission to use this command.' })
+    if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send('@everyone')
     await message.channel.send({
       flags: MessageFlags.IsComponentsV2,
@@ -532,7 +693,7 @@ if (message.content === '!sendrules') {
     })
   }
   if (message.content === '!buildinfo') {
-    if (!hasStaffRole(message)) return message.reply({ content: 'You do not have permission to use this command.' })
+    if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
       flags: MessageFlags.IsComponentsV2,
       components: [
@@ -563,7 +724,7 @@ if (message.content === '!sendrules') {
     })
   }
   if (message.content === '!testwelcome') {
-    if (!hasStaffRole(message)) return message.reply({ content: 'You do not have permission to use this command.' })
+    if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     
     const member = message.member
     const createdAt = Math.floor(member.user.createdTimestamp / 1000)
