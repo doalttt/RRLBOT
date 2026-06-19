@@ -71,48 +71,57 @@ client.on('interactionCreate', async interaction => {
       return interaction.reply({ content: `❌ You already have ${userTickets.size} open tickets. Please close one before opening another.`, ephemeral: true })
     }
 
-    const channel = await guild.channels.create({
-      name: `${ticketType}-${interaction.user.username}`,
-      parent: category ? category.id : null,
-      topic: `ticket-${interaction.user.id}`,
-      permissionOverwrites: [
-        { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
-        { id: interaction.user.id, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
-        { id: TICKET_STAFF_ROLE, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
-        { id: TICKET_DEV_ROLE, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] }
-      ]
-    })
+    await interaction.reply({ content: '🎫 Creating your ticket...', ephemeral: true })
 
-    await interaction.reply({ content: `Ticket created: ${channel}`, ephemeral: true })
+    try {
+      const channel = await guild.channels.create({
+        name: `${ticketType}-${interaction.user.username}`,
+        parent: category ? category.id : null,
+        topic: `ticket-${interaction.user.id}`,
+        permissionOverwrites: [
+          { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
+          { id: interaction.user.id, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
+          { id: TICKET_STAFF_ROLE, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
+          { id: TICKET_DEV_ROLE, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
+          { id: client.user.id, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] }
+        ]
+      })
 
-    await channel.send({
-      content: `<@${interaction.user.id}> <@&${TICKET_STAFF_ROLE}>`,
-      flags: MessageFlags.IsComponentsV2,
-      components: [
-        {
-          type: ComponentType.Container,
-          components: [
-            { type: ComponentType.TextDisplay, content: `# 🎫 ${typeNames[ticketType]} Ticket` },
-            { type: ComponentType.TextDisplay, content: `Opened by <@${interaction.user.id}>` },
-            { type: ComponentType.Separator },
-            { type: ComponentType.TextDisplay, content: 'A staff member will be with you shortly. Please describe your issue in as much detail as possible.' },
-            { type: ComponentType.Separator },
-            {
-              type: ComponentType.ActionRow,
-              components: [
-                { type: ComponentType.Button, label: 'Close', style: ButtonStyle.Secondary, custom_id: 'ticket_close', emoji: { name: '🔒' } },
-                { type: ComponentType.Button, label: 'Close With Reason', style: ButtonStyle.Primary, custom_id: 'ticket_close_reason', emoji: { name: '📝' } },
-                { type: ComponentType.Button, label: 'Delete (Admin Only)', style: ButtonStyle.Danger, custom_id: 'ticket_delete', emoji: { name: '🗑️' } }
-              ]
-            }
-          ]
-        }
-      ]
-    })
+      await channel.send(`<@${interaction.user.id}> <@&${TICKET_STAFF_ROLE}>`)
+
+      await channel.send({
+        flags: MessageFlags.IsComponentsV2,
+        components: [
+          {
+            type: ComponentType.Container,
+            components: [
+              { type: ComponentType.TextDisplay, content: `# 🎫 ${typeNames[ticketType]} Ticket` },
+              { type: ComponentType.TextDisplay, content: `Opened by <@${interaction.user.id}>` },
+              { type: ComponentType.Separator },
+              { type: ComponentType.TextDisplay, content: 'A staff member will be with you shortly. Please describe your issue in as much detail as possible.' },
+              { type: ComponentType.Separator },
+              {
+                type: ComponentType.ActionRow,
+                components: [
+                  { type: ComponentType.Button, label: 'Close', style: ButtonStyle.Secondary, custom_id: `ticket_close_${channel.id}`, emoji: { name: '🔒' } },
+                  { type: ComponentType.Button, label: 'Close With Reason', style: ButtonStyle.Primary, custom_id: `ticket_close_reason_${channel.id}`, emoji: { name: '📝' } },
+                  { type: ComponentType.Button, label: 'Delete (Admin Only)', style: ButtonStyle.Danger, custom_id: `ticket_delete_${channel.id}`, emoji: { name: '🗑️' } }
+                ]
+              }
+            ]
+          }
+        ]
+      })
+
+      await interaction.followUp({ content: `✅ Ticket created: ${channel}`, ephemeral: true })
+    } catch (err) {
+      console.error('Failed to create ticket:', err)
+      await interaction.followUp({ content: '❌ Something went wrong creating your ticket. Please ping a staff member.', ephemeral: true })
+    }
     return
   }
 
-  if (interaction.isButton() && interaction.customId === 'ticket_close') {
+  if (interaction.isButton() && interaction.customId.startsWith('ticket_close_reason_')) {
     const member = interaction.member
     if (!member.roles.cache.has(TICKET_STAFF_ROLE) && !member.roles.cache.has(TICKET_DEV_ROLE)) {
       return interaction.reply({ content: 'You do not have permission to close tickets.', ephemeral: true })
@@ -128,7 +137,7 @@ client.on('interactionCreate', async interaction => {
     return
   }
 
-  if (interaction.isButton() && interaction.customId === 'ticket_close_reason') {
+  if (interaction.isButton() && interaction.customId.startsWith('ticket_close_') && !interaction.customId.startsWith('ticket_close_reason_')) {
     const member = interaction.member
     if (!member.roles.cache.has(TICKET_STAFF_ROLE) && !member.roles.cache.has(TICKET_DEV_ROLE)) {
       return interaction.reply({ content: 'You do not have permission to close tickets.', ephemeral: true })
@@ -136,7 +145,7 @@ client.on('interactionCreate', async interaction => {
 
     await interaction.showModal({
       title: 'Close Ticket With Reason',
-      custom_id: 'ticket_close_reason_modal',
+      custom_id: `ticket_close_reason_modal_${interaction.channel.id}`,
       components: [
         {
           type: ComponentType.ActionRow,
@@ -156,7 +165,7 @@ client.on('interactionCreate', async interaction => {
     return
   }
 
-  if (interaction.isButton() && interaction.customId === 'ticket_delete') {
+  if (interaction.isButton() && interaction.customId.startsWith('ticket_delete_')) {
     const member = interaction.member
     if (!member.permissions.has('Administrator')) {
       return interaction.reply({ content: 'Only admins can delete tickets.', ephemeral: true })
@@ -169,7 +178,7 @@ client.on('interactionCreate', async interaction => {
     return
   }
 
-  if (interaction.isModalSubmit() && interaction.customId === 'ticket_close_reason_modal') {
+  if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_close_reason_modal_')) {
     const reason = interaction.fields.getTextInputValue('close_reason_input')
 
     await interaction.reply({ content: `🔒 Ticket closed.\n**Reason:** ${reason}` })
