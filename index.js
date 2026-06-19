@@ -100,6 +100,8 @@ client.on('interactionCreate', async interaction => {
               { type: ComponentType.Separator },
               { type: ComponentType.TextDisplay, content: 'A staff member will be with you shortly. Please describe your issue in as much detail as possible.' },
               { type: ComponentType.Separator },
+              { type: ComponentType.TextDisplay, content: 'Please Note: when you select a dropdown, there is no confirmation and the ticket will be created.' },
+              { type: ComponentType.TextDisplay, content: '⚠️ Opening tickets for no reason results in a warning.' },
               {
                 type: ComponentType.ActionRow,
                 components: [
