@@ -382,6 +382,27 @@ client.on('messageCreate', async message => {
     })
   }
 
+  if (message.content === '!helping') {
+    await message.channel.send({
+      flags: MessageFlags.IsComponentsV2,
+      components: [
+        {
+          type: ComponentType.Container,
+          components: [
+            {
+              type: ComponentType.Section,
+              components: [
+                { type: ComponentType.TextDisplay, content: '# Speaking from legacy bot since invites are disabled on this server' },
+                { type: ComponentType.TextDisplay, content: 'I accidently left the server' },
+                { type: ComponentType.TextDisplay, content: 'dm me on discord @doalt and invite me back, faith is sleeping so i cant ask him' }
+              ],
+            }
+          ]
+        }
+      ]
+    })
+  }
+
   if (message.content === '!sendcontrib') {
     if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
