@@ -259,7 +259,7 @@ client.on('interactionCreate', async interaction => {
     return
   }
 
-  if (interaction.isButton()) {
+if (interaction.isButton()) {
     const roleMap = {
       role_tag: '1495624606730682428',
       role_pings: '1495670066203590796',
@@ -302,47 +302,6 @@ client.on('interactionCreate', async interaction => {
     } else {
       await member.roles.add(role)
       return interaction.reply({ content: `Added <@&${roleId}>!`, ephemeral: true })
-    }
-  }
-})
-
-  if (interaction.isChatInputCommand() && interaction.commandName === 'update') {
-    const member = interaction.member
-    const hasPerms = member.roles.cache.has(STAFF_ROLE_ID) || member.roles.cache.has(DEV_ROLE_ID)
-
-    if (!hasPerms) {
-      return interaction.reply({ content: 'You do not have permission to post updates.', ephemeral: true })
-    }
-
-    const title = interaction.options.getString('title')
-    const desc = interaction.options.getString('desc')
-    const ping = interaction.options.getBoolean('ping')
-    const extra = interaction.options.getString('extra')
-
-    const embedComponents = [
-      { type: ComponentType.TextDisplay, content: `# 📢 ${title}` },
-      { type: ComponentType.Separator },
-      { type: ComponentType.TextDisplay, content: desc }
-    ]
-
-    if (extra) {
-      embedComponents.push({ type: ComponentType.Separator })
-      embedComponents.push({ type: ComponentType.TextDisplay, content: `### 📝 Extra Info\n${extra}` })
-    }
-
-    embedComponents.push({ type: ComponentType.Separator })
-    embedComponents.push({ type: ComponentType.TextDisplay, content: `*Posted by <@${interaction.user.id}> • <t:${Math.floor(Date.now() / 1000)}:F>*` })
-
-    try {
-      await interaction.reply({ content: '✅ Update posted!', ephemeral: true })
-      const updateChannel = client.channels.cache.get('1491702133790343218')
-      await updateChannel.send({
-        content: ping ? `<@&${PING_ROLE_ID}>` : undefined,
-        flags: MessageFlags.IsComponentsV2,
-        components: [{ type: ComponentType.Container, components: embedComponents }]
-      })
-    } catch (err) {
-      console.error('Failed to post update:', err)
     }
   }
 })
