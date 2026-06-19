@@ -99,9 +99,6 @@ client.on('interactionCreate', async interaction => {
               { type: ComponentType.TextDisplay, content: `Opened by <@${interaction.user.id}>` },
               { type: ComponentType.Separator },
               { type: ComponentType.TextDisplay, content: 'A staff member will be with you shortly. Please describe your issue in as much detail as possible.' },
-              { type: ComponentType.Separator },
-              { type: ComponentType.TextDisplay, content: 'Please Note: when you select a dropdown, there is no confirmation and the ticket will be created.' },
-              { type: ComponentType.TextDisplay, content: '⚠️ Opening tickets for no reason results in a warning.' },
               {
                 type: ComponentType.ActionRow,
                 components: [
@@ -207,6 +204,9 @@ client.on('interactionCreate', async interaction => {
           components: [
             { type: ComponentType.TextDisplay, content: '# 🎫 Open a Ticket' },
             { type: ComponentType.TextDisplay, content: 'Select a category below that best fits your issue, and a private ticket channel will be created for you.' },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: 'Please Note: when you select a dropdown, there is no confirmation and the ticket will be created.' },
+            { type: ComponentType.TextDisplay, content: '⚠️ Opening tickets for no reason results in a warning.' },
             { type: ComponentType.Separator },
             {
               type: ComponentType.ActionRow,
