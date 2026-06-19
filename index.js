@@ -9,9 +9,12 @@ const client = new Client({
     GatewayIntentBits.GuildMembers
   ]
 })
+
+const STAFF_ROLE_ID = '1491683467917000795'
+const DEV_ROLE_ID = '1491683215549923459'
 const TICKET_CATEGORY_ID = '1517445573735612549'
-const TICKET_STAFF_ROLE = 1491683467917000795
-const TICKET_DEV_ROLE = 1491683215549923459
+const TICKET_STAFF_ROLE = STAFF_ROLE_ID
+const TICKET_DEV_ROLE = DEV_ROLE_ID
 const PING_ROLE_ID = '1495670066203590796'
 
 function hasStaffRole(memberOrMessage) {
@@ -45,15 +48,6 @@ client.once('clientReady', async () => {
 })
 
 client.on('interactionCreate', async interaction => {
-  if (interaction.isButton()) {
-    const roleMap = {
-      role_tag: '1495624606730682428',
-      role_pings: '1495670066203590796',
-      verify_member: '1491684391066537984',
-      role_vr: '1497419431612252240',
-      role_screenmode: '1497419559878262966',
-      role_offtopic: '1499357606228136008'
-    }
 
   if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select') {
     const ticketType = interaction.values[0]
@@ -67,7 +61,6 @@ client.on('interactionCreate', async interaction => {
     }
 
     const guild = interaction.guild
-    const member = interaction.member
     const category = guild.channels.cache.get(TICKET_CATEGORY_ID)
 
     const existing = guild.channels.cache.find(c =>
@@ -228,6 +221,54 @@ client.on('interactionCreate', async interaction => {
     return
   }
 
+  if (interaction.isChatInputCommand() && interaction.commandName === 'update') {
+    if (!hasStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to post updates.', ephemeral: true })
+    }
+
+    const title = interaction.options.getString('title')
+    const desc = interaction.options.getString('desc')
+    const ping = interaction.options.getBoolean('ping')
+    const extra = interaction.options.getString('extra')
+
+    const embedComponents = [
+      { type: ComponentType.TextDisplay, content: `# 📢 ${title}` },
+      { type: ComponentType.Separator },
+      { type: ComponentType.TextDisplay, content: desc }
+    ]
+
+    if (extra) {
+      embedComponents.push({ type: ComponentType.Separator })
+      embedComponents.push({ type: ComponentType.TextDisplay, content: `### 📝 Extra Info\n${extra}` })
+    }
+
+    embedComponents.push({ type: ComponentType.Separator })
+    embedComponents.push({ type: ComponentType.TextDisplay, content: `*Posted by <@${interaction.user.id}> • <t:${Math.floor(Date.now() / 1000)}:F>*` })
+
+    try {
+      await interaction.reply({ content: '✅ Update posted!', ephemeral: true })
+      const updateChannel = client.channels.cache.get('1491702133790343218')
+      await updateChannel.send({
+        content: ping ? `<@&${PING_ROLE_ID}>` : undefined,
+        flags: MessageFlags.IsComponentsV2,
+        components: [{ type: ComponentType.Container, components: embedComponents }]
+      })
+    } catch (err) {
+      console.error('Failed to post update:', err)
+    }
+    return
+  }
+
+  if (interaction.isButton()) {
+    const roleMap = {
+      role_tag: '1495624606730682428',
+      role_pings: '1495670066203590796',
+      verify_member: '1491684391066537984',
+      role_vr: '1497419431612252240',
+      role_screenmode: '1497419559878262966',
+      role_offtopic: '1499357606228136008'
+    }
+
     const roleId = roleMap[interaction.customId]
     if (!roleId) return
 
@@ -242,11 +283,11 @@ client.on('interactionCreate', async interaction => {
       }
 
       const accountAge = Date.now() - interaction.user.createdTimestamp
-      const oneDay = 3 * 24 * 60 * 60 * 1000
+      const threeDays = 3 * 24 * 60 * 60 * 1000
 
-      if (accountAge < oneDay) {
+      if (accountAge < threeDays) {
         return interaction.reply({
-          content: '❌ Your Discord account must be older than 1 day to verify. Please try again later.',
+          content: '❌ Your Discord account must be older than 3 days to verify. Please try again later.',
           ephemeral: true
         })
       }
@@ -263,6 +304,7 @@ client.on('interactionCreate', async interaction => {
       return interaction.reply({ content: `Added <@&${roleId}>!`, ephemeral: true })
     }
   }
+})
 
   if (interaction.isChatInputCommand() && interaction.commandName === 'update') {
     const member = interaction.member
