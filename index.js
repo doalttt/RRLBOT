@@ -63,12 +63,12 @@ client.on('interactionCreate', async interaction => {
     const guild = interaction.guild
     const category = guild.channels.cache.get(TICKET_CATEGORY_ID)
 
-    const existing = guild.channels.cache.find(c =>
+    const userTickets = guild.channels.cache.filter(c =>
       c.topic === `ticket-${interaction.user.id}` && c.parentId === TICKET_CATEGORY_ID
     )
 
-    if (existing) {
-      return interaction.reply({ content: `You already have an open ticket: ${existing}`, ephemeral: true })
+    if (userTickets.size >= 3) {
+      return interaction.reply({ content: `❌ You already have ${userTickets.size} open tickets. Please close one before opening another.`, ephemeral: true })
     }
 
     const channel = await guild.channels.create({
