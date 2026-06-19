@@ -756,5 +756,8 @@ if (message.content === '!sendrules') {
     })
   }
 })
+process.on('unhandledRejection', error => {
+  console.error('Unhandled promise rejection:', error)
+})
 // toklen
 client.login(process.env.DISCORD_TOKEN)
