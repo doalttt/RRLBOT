@@ -673,13 +673,16 @@ client.on('messageCreate', async message => {
               components: [
                 { type: ComponentType.TextDisplay, content: '## <:Steam:1516698929448882327> Steam / PC' },
                 { type: ComponentType.TextDisplay, content: 'Extract the downloaded zip file and run \n`StartInScreen.bat - to run in screenmode`, \nor\n`Recroom_Release.exe - to run in vr` \nEither one works!' },
-                { type: ComponentType.TextDisplay, content: 'For linux you need to use steam proton by adding rrl as a steam game, ps. you need to add Recroom_Release.exe as a game from the rrl folder' }
+                { type: ComponentType.TextDisplay, content: 'For linux you need to use steam proton by adding rrl as a steam game, ps. you need to add Recroom_Release.exe as a game from the rrl folder' },
+                { type: ComponentType.Separator },
+                { type: ComponentType.TextDisplay, content: 'the server will automatically make a account for you.' },
+                { type: ComponentType.TextDisplay, content: 'When the installation is finished press windows button and search "Rec Room Legacy 2018"' },
               ],
               accessory: {
                 type: ComponentType.Button,
                 label: 'Download',
                 style: ButtonStyle.Link,
-                url: 'https://drive.google.com/file/d/1ykxW4vPHPJ8Kdxv2b8_jz7baKmfMjj8E/view',
+                url: 'https://drive.google.com/file/d/1SwjCtINtagFslir3z2qQ801NQaoYIQun/view?usp=sharing',
                 emoji: { name: '💾' }
               }
             }
