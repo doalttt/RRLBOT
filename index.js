@@ -657,6 +657,9 @@ client.on('guildMemberAdd', async member => {
   })
 })
 
+client.on('messageCreate', async message => {
+  if (message.author.bot) return
+
 if (message.content === '!sendembed') {
     if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
