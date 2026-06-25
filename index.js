@@ -676,7 +676,7 @@ client.on('messageCreate', async message => {
                 { type: ComponentType.TextDisplay, content: 'For linux you need to use steam proton by adding rrl as a steam game, ps. you need to add Recroom_Release.exe as a game from the rrl folder' },
                 { type: ComponentType.Separator },
                 { type: ComponentType.TextDisplay, content: 'the server will automatically make a account for you.' },
-                { type: ComponentType.TextDisplay, content: 'When the installation is finished press windows button and search "Rec Room Legacy 2018"' },
+                { type: ComponentType.TextDisplay, content: 'When the installation is finished press windows button and search "Rec Room Legacy 2018"' }
               ],
               accessory: {
                 type: ComponentType.Button,
