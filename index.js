@@ -657,10 +657,7 @@ client.on('guildMemberAdd', async member => {
   })
 })
 
-client.on('messageCreate', async message => {
-  if (message.author.bot) return
-
-  if (message.content === '!sendembed') {
+if (message.content === '!sendembed') {
     if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
       flags: MessageFlags.IsComponentsV2,
@@ -672,11 +669,7 @@ client.on('messageCreate', async message => {
               type: ComponentType.Section,
               components: [
                 { type: ComponentType.TextDisplay, content: '## <:Steam:1516698929448882327> Steam / PC' },
-                { type: ComponentType.TextDisplay, content: 'Extract the downloaded zip file and run \n`StartInScreen.bat - to run in screenmode`, \nor\n`Recroom_Release.exe - to run in vr` \nEither one works!' },
-                { type: ComponentType.TextDisplay, content: 'For linux you need to use steam proton by adding rrl as a steam game, ps. you need to add Recroom_Release.exe as a game from the rrl folder' },
-                { type: ComponentType.Separator },
-                { type: ComponentType.TextDisplay, content: 'the server will automatically make a account for you.' },
-                { type: ComponentType.TextDisplay, content: 'When the installation is finished press windows button and search "Rec Room Legacy 2018"' }
+                { type: ComponentType.TextDisplay, content: 'Extract the downloaded zip file and run \n`StartInScreen.bat - to run in screenmode`, \nor\n`Recroom_Release.exe - to run in vr` \nEither one works!' }
               ],
               accessory: {
                 type: ComponentType.Button,
@@ -685,7 +678,11 @@ client.on('messageCreate', async message => {
                 url: 'https://drive.google.com/file/d/1SwjCtINtagFslir3z2qQ801NQaoYIQun/view?usp=sharing',
                 emoji: { name: '💾' }
               }
-            }
+            },
+            { type: ComponentType.TextDisplay, content: 'For linux you need to use steam proton by adding rrl as a steam game, ps. you need to add Recroom_Release.exe as a game from the rrl folder' },
+            { type: ComponentType.Separator },
+            { type: ComponentType.TextDisplay, content: 'The server will automatically make an account for you.' },
+            { type: ComponentType.TextDisplay, content: 'When the installation is finished, press the Windows button and search "Rec Room Legacy 2018"' }
           ]
         }
       ]
