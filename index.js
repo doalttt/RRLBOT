@@ -764,7 +764,7 @@ client.on('messageCreate', async message => {
 
 if (message.mentions.has(client.user)) {
     const now = Date.now()
-    const cooldown = 3000
+    const cooldown = 6500
     const lastUsed = aiCooldowns.get(message.author.id) || 0
 
     if (now - lastUsed < cooldown) {
@@ -772,7 +772,10 @@ if (message.mentions.has(client.user)) {
       return message.reply(`Chill! You can talk to me again in **${remaining}s**`)
     }
 
-    if (message.channel.id === AI_CHANNEL_ID) return
+    const AI_ALLOWED_CHANNEL = '1525136726257959072'
+    const isStaff = message.member.roles.cache.has(STAFF_ROLE_ID) || message.member.roles.cache.has(DEV_ROLE_ID)
+
+    if (message.channel.id !== AI_ALLOWED_CHANNEL && !isStaff) return
 
     aiCooldowns.set(message.author.id, now)
 
@@ -926,19 +929,7 @@ if (message.mentions.has(client.user)) {
         return
       }
 
-      if (rawContent.includes('@everyone')) {
-        return
-      }
-
-      if (rawContent.includes('ping here')) {
-        return
-      }
-
       if (rawContent.includes('ping @everyone')) {
-        return
-      }
-
-      if (rawContent.includes('@everyone')) {
         return
       }
 
