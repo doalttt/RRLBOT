@@ -987,6 +987,7 @@ if (message.mentions.has(client.user)) {
       await message.channel.sendTyping()
 
       const body = JSON.stringify({
+  max_tokens: 150,
   messages: [
     {
       role: 'system',
@@ -1490,6 +1491,9 @@ if (message.content === '!sendrules') {
 })
 process.on('unhandledRejection', error => {
   console.error('Unhandled promise rejection:', error)
+})
+process.on('uncaughtException', error => {
+  console.error('Uncaught exception:', error)
 })
 // toklen
 process.on('SIGTERM', async () => {
