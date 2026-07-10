@@ -764,7 +764,7 @@ client.on('messageCreate', async message => {
 
 if (message.mentions.has(client.user)) {
     const now = Date.now()
-    const cooldown = 3000
+    const cooldown = 6500
     const lastUsed = aiCooldowns.get(message.author.id) || 0
 
     if (now - lastUsed < cooldown) {
@@ -780,10 +780,10 @@ if (message.mentions.has(client.user)) {
     let userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim()
     if (!userMessage && message.attachments.size === 0) return message.reply('Hey! How can I help you?')
 
-    const authorInfo = `[Message from ${message.author.username} (Display name: ${message.member?.displayName || message.author.username}, Account created: ${new Date(message.author.createdTimestamp).toDateString()}, Joined server: ${message.member?.joinedAt ? new Date(message.member.joinedAt).toDateString() : 'unknown'}, Avatar: ${message.author.displayAvatarURL()})]`
+    const authorInfo = `[The user talking to you is: ${message.author.username} (Display name: ${message.member?.displayName || message.author.username}, Account created: ${new Date(message.author.createdTimestamp).toDateString()}, Joined server: ${message.member?.joinedAt ? new Date(message.member.joinedAt).toDateString() : 'unknown'}, Avatar: ${message.author.displayAvatarURL()})]`
 
     const attachmentInfo = message.attachments.size > 0
-      ? `[User attached ${message.attachments.size} file(s): ${message.attachments.map(a => `${a.name} (${a.contentType || 'unknown type'}) - ${a.url}`).join(', ')}]`
+      ? `[${message.author.username} attached ${message.attachments.size} file(s): ${message.attachments.map(a => `${a.name} (${a.contentType || 'unknown type'}) - ${a.url}`).join(', ')}]`
       : ''
 
     if (message.reference) {
@@ -795,15 +795,15 @@ if (message.mentions.has(client.user)) {
         const repliedAvatar = repliedTo.author.displayAvatarURL()
         const repliedJoined = repliedTo.member?.joinedAt ? new Date(repliedTo.member.joinedAt).toDateString() : 'unknown'
         const repliedAttachments = repliedTo.attachments.size > 0
-          ? `[Replied message has ${repliedTo.attachments.size} attachment(s): ${repliedTo.attachments.map(a => `${a.name} (${a.contentType || 'unknown type'}) - ${a.url}`).join(', ')}]`
+          ? `[That message has ${repliedTo.attachments.size} attachment(s): ${repliedTo.attachments.map(a => `${a.name} (${a.contentType || 'unknown type'}) - ${a.url}`).join(', ')}]`
           : ''
-        userMessage = `${authorInfo}\n${attachmentInfo}\n[Replying to ${repliedAuthor} (Display name: ${repliedDisplayName}, Joined: ${repliedJoined}, Avatar: ${repliedAvatar}): "${repliedContent}" ${repliedAttachments}]\n${userMessage}`
+        userMessage = `${authorInfo}\n${attachmentInfo}\n[${message.author.username} is replying to a DIFFERENT person: ${repliedAuthor} (Display name: ${repliedDisplayName}, Joined: ${repliedJoined}, Avatar: ${repliedAvatar}) who said: "${repliedContent}" ${repliedAttachments}]\n[${message.author.username} says to you:] ${userMessage}`
       } catch (err) {
         console.error('Failed to fetch replied message:', err)
         userMessage = `${authorInfo}\n${attachmentInfo}\n${userMessage}`
       }
     } else {
-      userMessage = `${authorInfo}\n${attachmentInfo}\n${userMessage}`
+      userMessage = `${authorInfo}\n${attachmentInfo}\n[${message.author.username} says to you:] ${userMessage}`
     }
 
     try {
