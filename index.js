@@ -777,8 +777,19 @@ if (message.mentions.has(client.user)) {
     }
     aiCooldowns.set(message.author.id, now)
 
-    const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim()
+    let userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim()
     if (!userMessage) return message.reply('Hey! How can I help you?')
+
+    if (message.reference) {
+      try {
+        const repliedTo = await message.channel.messages.fetch(message.reference.messageId)
+        const repliedContent = repliedTo.content || '[no text content]'
+        const repliedAuthor = repliedTo.author.username
+        userMessage = `[Replying to ${repliedAuthor}: "${repliedContent}"]\n${userMessage}`
+      } catch (err) {
+        console.error('Failed to fetch replied message:', err)
+      }
+    }
 
     try {
       const imageTriggers = ['generate', 'draw', 'image', 'picture', 'photo', 'art']
