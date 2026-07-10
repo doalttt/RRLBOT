@@ -204,8 +204,8 @@ client.on('interactionCreate', async interaction => {
               { 
                 type: ComponentType.ActionRow,
                 components: [
-                  { type: ComponentType.Button, label: 'Close', style: ButtonStyle.Secondary, custom_id: `ticket_close_${channel.id}`, emoji: { name: '🔒' } },
-                  { type: ComponentType.Button, label: 'Close With Reason', style: ButtonStyle.Primary, custom_id: `ticket_close_reason_${channel.id}`, emoji: { name: '📝' } },
+                  { type: ComponentType.Button, label: 'Close With Reason', style: ButtonStyle.Primary, custom_id: `ticket_close_${channel.id}`, emoji: { name: '📝' } },
+                  { type: ComponentType.Button, label: 'Close', style: ButtonStyle.Secondary, custom_id: `ticket_close_reason_${channel.id}`, emoji: { name: '🔒' } },
                   { type: ComponentType.Button, label: 'Reopen', style: ButtonStyle.Success, custom_id: `ticket_reopen_${channel.id}`, emoji: { name: '🔓' } },
                   { type: ComponentType.Button, label: 'Delete (Admin Only)', style: ButtonStyle.Danger, custom_id: `ticket_delete_${channel.id}`, emoji: { name: '🗑️' } }
                 ]
