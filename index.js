@@ -1,5 +1,6 @@
 const { Client, GatewayIntentBits, ComponentType, ButtonStyle, MessageFlags, REST, Routes, SlashCommandBuilder } = require('discord.js')
 require('dotenv').config()
+const https = require('https')
 const fs = require('fs')
 
 const client = new Client({
@@ -763,23 +764,42 @@ if (message.mentions.has(client.user)) {
       const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim()
       if (!userMessage) return message.reply('Hey! How can I help you?')
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 100,
-          system: 'You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise.',
-          messages: [{ role: 'user', content: userMessage }]
-        })
+      const body = JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 100,
+        system: 'You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise.',
+        messages: [{ role: 'user', content: userMessage }]
       })
 
-      const data = await response.json()
-      const reply = data.content?.[0]?.text || 'Sorry, I couldn\'t process that!'
+      const reply = await new Promise((resolve, reject) => {
+        const req = https.request({
+          hostname: 'api.anthropic.com',
+          path: '/v1/messages',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': process.env.ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+            'Content-Length': Buffer.byteLength(body)
+          }
+        }, res => {
+          let data = ''
+          res.on('data', chunk => data += chunk)
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(data)
+              console.log('Anthropic response:', JSON.stringify(parsed))
+              resolve(parsed.content?.[0]?.text || 'Sorry, I couldn\'t process that!')
+            } catch (e) {
+              reject(e)
+            }
+          })
+        })
+        req.on('error', reject)
+        req.write(body)
+        req.end()
+      })
+
       await message.reply(reply)
     } catch (err) {
       console.error('AI reply failed:', err)
