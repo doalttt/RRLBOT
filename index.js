@@ -764,7 +764,7 @@ client.on('messageCreate', async message => {
 
 if (message.mentions.has(client.user)) {
     const now = Date.now()
-    const cooldown = 6500
+    const cooldown = 3000
     const lastUsed = aiCooldowns.get(message.author.id) || 0
 
     if (now - lastUsed < cooldown) {
@@ -772,19 +772,44 @@ if (message.mentions.has(client.user)) {
       return message.reply(`Chill! You can talk to me again in **${remaining}s**`)
     }
 
-    if (message.channel.id === AI_CHANNEL_ID) {
-      return
-    }
+    if (message.channel.id === AI_CHANNEL_ID) return
+
     aiCooldowns.set(message.author.id, now)
 
     let userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim()
     if (!userMessage && message.attachments.size === 0) return message.reply('Hey! How can I help you?')
 
-    const authorInfo = `[The user talking to you is: ${message.author.username} (Display name: ${message.member?.displayName || message.author.username}, Account created: ${new Date(message.author.createdTimestamp).toDateString()}, Joined server: ${message.member?.joinedAt ? new Date(message.member.joinedAt).toDateString() : 'unknown'}, Avatar: ${message.author.displayAvatarURL()})]`
+    const guild = message.guild
+    const onlineMembers = guild.members.cache.filter(m => m.presence?.status && m.presence.status !== 'offline').size
+    const totalMembers = guild.memberCount
+    const boostLevel = guild.premiumTier
+    const boostCount = guild.premiumSubscriptionCount
+    const userRoles = message.member.roles.cache.filter(r => r.id !== guild.id).map(r => r.name).join(', ') || 'None'
+    const channelName = message.channel.name
+    const channelTopic = message.channel.topic || 'No topic set'
+    const botUptime = process.uptime()
+    const uptimeStr = `${Math.floor(botUptime / 3600)}h ${Math.floor((botUptime % 3600) / 60)}m ${Math.floor(botUptime % 60)}s`
+    const memUsage = process.memoryUsage()
+    const memStr = `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB / ${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`
+    const currentTime = new Date().toUTCString()
+
+    let recentMessages = ''
+    try {
+      const fetched = await message.channel.messages.fetch({ limit: 5 })
+      recentMessages = fetched.reverse().map(m => `${m.author.username}: ${m.content}`).filter(m => m).join('\n')
+    } catch (err) {}
+
+    const authorInfo = `[The user talking to you is: ${message.author.username} (Display name: ${message.member?.displayName || message.author.username}, Roles: ${userRoles}, Account created: ${new Date(message.author.createdTimestamp).toDateString()}, Joined server: ${message.member?.joinedAt ? new Date(message.member.joinedAt).toDateString() : 'unknown'}, Avatar: ${message.author.displayAvatarURL()})]`
 
     const attachmentInfo = message.attachments.size > 0
       ? `[${message.author.username} attached ${message.attachments.size} file(s): ${message.attachments.map(a => `${a.name} (${a.contentType || 'unknown type'}) - ${a.url}`).join(', ')}]`
       : ''
+
+    const serverInfo = `[Server info: Name: ${guild.name}, Members: ${totalMembers} total, Boost level: ${boostLevel}, Boosts: ${boostCount}, Current channel: #${channelName}, Channel topic: ${channelTopic}]`
+
+    const botInfo = `[Bot info: Uptime: ${uptimeStr}, Memory usage: ${memStr}, Current time (UTC): ${currentTime}]`
+
+    const recentContext = recentMessages ? `[Recent messages in #${channelName}:\n${recentMessages}]` : ''
 
     if (message.reference) {
       try {
@@ -797,25 +822,25 @@ if (message.mentions.has(client.user)) {
         const repliedAttachments = repliedTo.attachments.size > 0
           ? `[That message has ${repliedTo.attachments.size} attachment(s): ${repliedTo.attachments.map(a => `${a.name} (${a.contentType || 'unknown type'}) - ${a.url}`).join(', ')}]`
           : ''
-        userMessage = `${authorInfo}\n${attachmentInfo}\n[${message.author.username} is replying to a DIFFERENT person: ${repliedAuthor} (Display name: ${repliedDisplayName}, Joined: ${repliedJoined}, Avatar: ${repliedAvatar}) who said: "${repliedContent}" ${repliedAttachments}]\n[${message.author.username} says to you:] ${userMessage}`
+        userMessage = `${authorInfo}\n${serverInfo}\n${botInfo}\n${recentContext}\n${attachmentInfo}\n[${message.author.username} is replying to a DIFFERENT person: ${repliedAuthor} (Display name: ${repliedDisplayName}, Joined: ${repliedJoined}, Avatar: ${repliedAvatar}) who said: "${repliedContent}" ${repliedAttachments}]\n[${message.author.username} says to you:] ${userMessage}`
       } catch (err) {
-        console.error('Failed to fetch replied message:', err)
-        userMessage = `${authorInfo}\n${attachmentInfo}\n${userMessage}`
+        userMessage = `${authorInfo}\n${serverInfo}\n${botInfo}\n${recentContext}\n${attachmentInfo}\n[${message.author.username} says to you:] ${userMessage}`
       }
     } else {
-      userMessage = `${authorInfo}\n${attachmentInfo}\n[${message.author.username} says to you:] ${userMessage}`
+      userMessage = `${authorInfo}\n${serverInfo}\n${botInfo}\n${recentContext}\n${attachmentInfo}\n[${message.author.username} says to you:] ${userMessage}`
     }
 
     try {
-      const imageTriggers = ['generate', 'draw', 'image', 'picture', 'photo', 'art']
       const hasOwnAttachment = message.attachments.size > 0
       const isReplyingToAttachment = message.reference && userMessage.includes('That message has')
-      const shouldGenerateImage = !hasOwnAttachment && !isReplyingToAttachment && imageTriggers.some(t => message.content.replace(/<@!?[0-9]+>/g, '').trim().toLowerCase().includes(t))
+      const rawContent = message.content.replace(/<@!?[0-9]+>/g, '').trim().toLowerCase()
+      const imageTriggers = ['generate', 'draw', 'image', 'picture', 'photo', 'art']
+      const shouldGenerateImage = !hasOwnAttachment && !isReplyingToAttachment && imageTriggers.some(t => rawContent.includes(t))
 
       if (shouldGenerateImage) {
         try {
           await message.channel.sendTyping()
-          const prompt = encodeURIComponent(userMessage)
+          const prompt = encodeURIComponent(message.content.replace(/<@!?[0-9]+>/g, '').trim())
           const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=512&height=512&nologo=true`
 
           const imageBuffer = await new Promise((resolve, reject) => {
@@ -835,16 +860,75 @@ if (message.mentions.has(client.user)) {
             makeRequest(imageUrl)
           })
 
-          await message.reply({
-            files: [{
-              attachment: imageBuffer,
-              name: 'image.png'
-            }]
-          })
+          await message.reply({ files: [{ attachment: imageBuffer, name: 'image.png' }] })
         } catch (err) {
           console.error('Image generation failed:', err)
           await message.reply('❌ Failed to generate image, try again!')
         }
+        return
+      }
+
+      const mathMatch = rawContent.match(/[\d+\-*/().% ]{3,}/)
+      if (mathMatch && (rawContent.includes('calculate') || rawContent.includes('math') || rawContent.includes('what is') && rawContent.match(/[\d+\-*/]/))) {
+        try {
+          const result = Function('"use strict"; return (' + mathMatch[0] + ')')()
+          await message.reply(`🧮 ${mathMatch[0].trim()} = **${result}**`)
+          return
+        } catch (err) {}
+      }
+
+      if (rawContent.includes('roll') || rawContent.includes('dice')) {
+        const match = rawContent.match(/(\d+)d(\d+)/) || rawContent.match(/d(\d+)/)
+        const sides = match ? parseInt(match[2] || match[1]) : 6
+        const rolls = match?.[2] ? parseInt(match[1]) : 1
+        const results = Array.from({ length: Math.min(rolls, 10) }, () => Math.floor(Math.random() * sides) + 1)
+        const total = results.reduce((a, b) => a + b, 0)
+        await message.reply(`🎲 Rolled ${rolls}d${sides}: **${results.join(', ')}** (Total: **${total}**)`)
+        return
+      }
+
+      if (rawContent.includes('flip') || rawContent.includes('coin')) {
+        await message.reply(`🪙 **${Math.random() > 0.5 ? 'Heads' : 'Tails'}!**`)
+        return
+      }
+
+      if (rawContent.includes('choose') || rawContent.includes('pick') || rawContent.includes('or')) {
+        const cleanMsg = message.content.replace(/<@!?[0-9]+>/g, '').trim()
+        const options = cleanMsg.split(/\bor\b|\bchoose\b|\bpick\b/i).map(o => o.trim()).filter(o => o.length > 0 && !o.match(/^(between|from)$/i))
+        if (options.length > 1) {
+          const picked = options[Math.floor(Math.random() * options.length)]
+          await message.reply(`🎯 I pick: **${picked}**`)
+          return
+        }
+      }
+
+      if (rawContent.includes('color') || rawContent.includes('colour') || rawContent.includes('random color')) {
+        const hex = Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')
+        await message.reply(`🎨 Random color: **#${hex}** — https://www.color-hex.com/color/${hex}`)
+        return
+      }
+
+      if (rawContent.includes('warn') && rawContent.includes('check') || rawContent.includes('warnings for')) {
+        const mentioned = message.mentions.users.filter(u => u.id !== client.user.id).first()
+        if (mentioned) {
+          const warns = getWarnings(mentioned.id)
+          await message.reply(warns.length === 0 ? `${mentioned.username} has no warnings.` : `${mentioned.username} has **${warns.length}** warning(s).`)
+          return
+        }
+      }
+
+      if (rawContent.includes('uptime') || rawContent.includes('how long') && rawContent.includes('running')) {
+        await message.reply(`⏱️ I've been running for **${uptimeStr}**`)
+        return
+      }
+
+      if (rawContent.includes('memory') || rawContent.includes('ram')) {
+        await message.reply(`💾 Memory usage: **${memStr}**`)
+        return
+      }
+
+      if (rawContent.includes('members') || rawContent.includes('how many people')) {
+        await message.reply(`👥 **${totalMembers}** members in the server!`)
         return
       }
 
@@ -855,11 +939,11 @@ if (message.mentions.has(client.user)) {
 
       let searchContext = ''
       const searchTriggers = ['search', 'look up', 'what is', 'who is', 'when did', 'latest', 'news', 'current', 'today', 'find']
-      const shouldSearch = searchTriggers.some(t => userMessage.toLowerCase().includes(t))
+      const shouldSearch = searchTriggers.some(t => rawContent.includes(t))
 
       if (shouldSearch) {
         try {
-          const searchQuery = encodeURIComponent(userMessage)
+          const searchQuery = encodeURIComponent(message.content.replace(/<@!?[0-9]+>/g, '').trim())
           const searchResult = await new Promise((resolve, reject) => {
             const req = https.request({
               hostname: 'api.duckduckgo.com',
@@ -876,7 +960,6 @@ if (message.mentions.has(client.user)) {
             req.on('error', () => resolve(null))
             req.end()
           })
-
           if (searchResult?.AbstractText) {
             searchContext = `Web search result: ${searchResult.AbstractText.slice(0, 300)}`
           } else if (searchResult?.RelatedTopics?.[0]?.Text) {
@@ -890,13 +973,15 @@ if (message.mentions.has(client.user)) {
       history.push({ role: 'user', content: userMessage })
       if (history.length > 20) history.splice(0, history.length - 20)
 
+      await message.channel.sendTyping()
+
       const body = JSON.stringify({
         model: 'llama-3.1-8b-instant',
         max_tokens: 150,
         messages: [
           {
             role: 'system',
-            content: `You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise. And when asked about RecRoom Legacy know this, recroom legacy is a rec room revival server that is currently in the proccess of making rec room 2021 happen, the ceo is (Faith/Faithlym) and rec room legacy orginated from (KDrec) made by @doalt and @faithlym which then led to rec legacy! When a user talks to you about the horses, act scared and mention that you know about the horses. If you need to share code, always wrap it in triple backticks with the language name.${searchContext ? `\n\n${searchContext}` : ''}`
+            content: `You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise. You are aware of the server, the user, recent messages, and bot stats provided in the context. When asked about server info, members, uptime, memory, or user roles use the context provided. When asked about RecRoom Legacy: it is a rec room revival server making rec room 2021 happen, the CEO is Faith/Faithlym, it originated from KDrec made by @doalt and @faithlym. When a user talks about the horses act scared and say you know about the horses. Wrap code in triple backticks with language name.${searchContext ? `\n\n${searchContext}` : ''}`
           },
           ...history
         ]
@@ -918,7 +1003,8 @@ if (message.mentions.has(client.user)) {
           res.on('end', () => {
             try {
               const parsed = JSON.parse(data)
-              resolve(parsed.choices?.[0]?.message?.content || 'Fuck you')
+              console.log('Groq raw response:', JSON.stringify(parsed))
+              resolve(parsed.choices?.[0]?.message?.content || parsed.error?.message || 'Sorry, something went wrong!')
             } catch (e) {
               reject(e)
             }
