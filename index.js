@@ -764,7 +764,7 @@ client.on('messageCreate', async message => {
 
 if (message.mentions.has(client.user)) {
     const now = Date.now()
-    const cooldown = 10000
+    const cooldown = 3000
     const lastUsed = aiCooldowns.get(message.author.id) || 0
 
     if (now - lastUsed < cooldown) {
@@ -825,7 +825,7 @@ if (message.mentions.has(client.user)) {
       if (history.length > 20) history.splice(0, history.length - 20)
 
       const body = JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-3.3-70b-versatile',
         max_tokens: 150,
         messages: [
           {
