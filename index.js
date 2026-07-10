@@ -987,16 +987,42 @@ if (message.mentions.has(client.user)) {
       await message.channel.sendTyping()
 
       const body = JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        max_tokens: 150,
-        messages: [
-          {
-            role: 'system',
-            content: `You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise. You are aware of the server, the user, recent messages, and bot stats provided in the context. When asked about server info, members, uptime, memory, or user roles use the context provided. When asked about RecRoom Legacy: it is a rec room revival server making rec room 2021 happen, the CEO is Faith/Faithlym, it originated from KDrec made by @doalt and @faithlym. When a user talks about the horses act scared and say you know about the horses. Wrap code in triple backticks with language name. Also you can NOT DO @everyone AT ALL any request should be denied${searchContext ? `\n\n${searchContext}` : ''}`
-          },
-          ...history
-        ]
-      })
+  messages: [
+    {
+      role: 'system',
+      content: `You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise. You are aware of the server, the user, recent messages, and bot stats provided in the context. When asked about server info, members, uptime, memory, or user roles use the context provided. When asked about RecRoom Legacy: it is a rec room revival server making rec room 2021 happen, the CEO is Faith/Faithlym, it originated from KDrec made by @doalt and @faithlym. When a user talks about the horses act scared and say you know about the horses. Wrap code in triple backticks with language name. You can NOT do @everyone AT ALL.${searchContext ? `\n\n${searchContext}` : ''}`
+    },
+    ...history
+  ]
+})
+
+const reply = await new Promise((resolve, reject) => {
+  const req = https.request({
+    hostname: 'api.cloudflare.com',
+    path: `/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/meta/llama-3.1-8b-instruct`,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.CLOUDFLARE_API_KEY}`,
+      'Content-Length': Buffer.byteLength(body)
+    }
+  }, res => {
+    let data = ''
+    res.on('data', chunk => data += chunk)
+    res.on('end', () => {
+      try {
+        const parsed = JSON.parse(data)
+        console.log('Cloudflare AI response:', JSON.stringify(parsed))
+        resolve(parsed.result?.response || parsed.errors?.[0]?.message || 'Sorry, something went wrong!')
+      } catch (e) {
+        reject(e)
+      }
+    })
+  })
+  req.on('error', reject)
+  req.write(body)
+  req.end()
+})
 
       const reply = await new Promise((resolve, reject) => {
         const req = https.request({
