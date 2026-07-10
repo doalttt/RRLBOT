@@ -996,7 +996,7 @@ if (message.mentions.has(client.user)) {
       await message.channel.sendTyping()
 
       const body = JSON.stringify({
-        model: 'meta-llama/llama-prompt-guard-2-86m',
+        model: 'qwen/qwen3-32b',
         max_tokens: 150,
         messages: [
           {
