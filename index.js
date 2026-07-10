@@ -758,6 +758,36 @@ client.on('guildMemberAdd', async member => {
 client.on('messageCreate', async message => {
   if (message.author.bot) return
 
+if (message.mentions.has(client.user)) {
+    try {
+      const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim()
+      if (!userMessage) return message.reply('Hey! How can I help you?')
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 100,
+          system: 'You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise.',
+          messages: [{ role: 'user', content: userMessage }]
+        })
+      })
+
+      const data = await response.json()
+      const reply = data.content?.[0]?.text || 'Sorry, I couldn\'t process that!'
+      await message.reply(reply)
+    } catch (err) {
+      console.error('AI reply failed:', err)
+      await message.reply('Sorry, something went wrong!')
+    }
+    return
+  }
+
 if (message.content === '!sendembed') {
     if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
