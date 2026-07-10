@@ -759,40 +759,55 @@ client.on('guildMemberAdd', async member => {
 client.on('messageCreate', async message => {
   if (message.author.bot) return
 
-const body = JSON.stringify({
-  model: 'llama3-8b-8192',
-  max_tokens: 100,
-  messages: [
-    { role: 'system', content: 'You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise.' },
-    { role: 'user', content: userMessage }
-  ]
-})
+if (message.mentions.has(client.user)) {
+    const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim()
+    if (!userMessage) return message.reply('Hey! How can I help you?')
 
-const req = https.request({
-  hostname: 'api.groq.com',
-  path: '/openai/v1/chat/completions',
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-    'Content-Length': Buffer.byteLength(body)
-  }
-}, res => {
-  let data = ''
-  res.on('data', chunk => data += chunk)
-  res.on('end', () => {
     try {
-      const parsed = JSON.parse(data)
-      console.log('Groq response:', JSON.stringify(parsed))
-      resolve(parsed.choices?.[0]?.message?.content || 'Sorry, I couldn\'t process that!')
-    } catch (e) {
-      reject(e)
+      const body = JSON.stringify({
+        model: 'llama3-8b-8192',
+        max_tokens: 100,
+        messages: [
+          { role: 'system', content: 'You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise.' },
+          { role: 'user', content: userMessage }
+        ]
+      })
+
+      const reply = await new Promise((resolve, reject) => {
+        const req = https.request({
+          hostname: 'api.groq.com',
+          path: '/openai/v1/chat/completions',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+            'Content-Length': Buffer.byteLength(body)
+          }
+        }, res => {
+          let data = ''
+          res.on('data', chunk => data += chunk)
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(data)
+              console.log('Groq response:', JSON.stringify(parsed))
+              resolve(parsed.choices?.[0]?.message?.content || 'Fuck you')
+            } catch (e) {
+              reject(e)
+            }
+          })
+        })
+        req.on('error', reject)
+        req.write(body)
+        req.end()
+      })
+
+      await message.reply(reply)
+    } catch (err) {
+      console.error('AI reply failed:', err)
+      await message.reply('Sorry, something went wrong!')
     }
-  })
-})
-req.on('error', reject)
-req.write(body)
-req.end()
+    return
+  }
 if (message.content === '!sendembed') {
     if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
     await message.channel.send({
