@@ -863,6 +863,16 @@ if (message.mentions.has(client.user)) {
         req.end()
       })
 
+      const imageTriggers = ['generate', 'make', 'draw', 'create', 'image', 'picture', 'photo', 'art']
+      const shouldGenerateImage = imageTriggers.some(t => userMessage.toLowerCase().includes(t))
+
+      if (shouldGenerateImage) {
+        const prompt = encodeURIComponent(userMessage)
+        const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=512&height=512&nologo=true`
+        await message.reply({ content: `🎨 Here's your image!`, files: [imageUrl] })
+        return
+      }
+
       history.push({ role: 'assistant', content: reply })
       aiConversations.set(message.author.id, history)
 
