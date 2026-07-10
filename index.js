@@ -1023,7 +1023,6 @@ const reply = await new Promise((resolve, reject) => {
   req.write(body)
   req.end()
 })
-
       history.push({ role: 'assistant', content: reply })
       aiConversations.set(message.author.id, history)
 
