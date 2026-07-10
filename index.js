@@ -20,8 +20,9 @@ const STATUS_CHANNEL_ID = '1525065072509063238'
 const TICKET_STAFF_ROLE = STAFF_ROLE_ID
 const TICKET_DEV_ROLE = DEV_ROLE_ID
 const PING_ROLE_ID = '1495670066203590796'
-const AI_CHANNEL_ID = '1491702338807926814'
+const aiConversations = new Map()
 const aiCooldowns = new Map()
+const AI_CHANNEL_ID = '1491702338807926814'
 
 const WARNINGS_FILE = './warnings.json'
 
@@ -762,10 +763,6 @@ client.on('messageCreate', async message => {
   if (message.author.bot) return
 
 if (message.mentions.has(client.user)) {
-    if (message.channel.id !== AI_CHANNEL_ID) {
-      return message.reply(`I can only be talked to in <#${AI_CHANNEL_ID}>!`)
-    }
-
     const now = Date.now()
     const cooldown = 10000
     const lastUsed = aiCooldowns.get(message.author.id) || 0
@@ -775,18 +772,67 @@ if (message.mentions.has(client.user)) {
       return message.reply(`Chill! You can talk to me again in **${remaining}s** ⏳`)
     }
 
+    if (message.channel.id === AI_CHANNEL_ID) {
+      return message.reply({ content: `I can't be used in this channel!` })
+    }
+
     aiCooldowns.set(message.author.id, now)
 
     const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim()
     if (!userMessage) return message.reply('Hey! How can I help you?')
 
     try {
+      if (!aiConversations.has(message.author.id)) {
+        aiConversations.set(message.author.id, [])
+      }
+      const history = aiConversations.get(message.author.id)
+
+      let searchContext = ''
+      const searchTriggers = ['search', 'look up', 'what is', 'who is', 'when did', 'latest', 'news', 'current', 'today', 'find']
+      const shouldSearch = searchTriggers.some(t => userMessage.toLowerCase().includes(t))
+
+      if (shouldSearch) {
+        try {
+          const searchQuery = encodeURIComponent(userMessage)
+          const searchResult = await new Promise((resolve, reject) => {
+            const req = https.request({
+              hostname: 'api.duckduckgo.com',
+              path: `/?q=${searchQuery}&format=json&no_redirect=1&no_html=1`,
+              method: 'GET',
+              headers: { 'User-Agent': 'LegacyBot/1.0' }
+            }, res => {
+              let data = ''
+              res.on('data', chunk => data += chunk)
+              res.on('end', () => {
+                try { resolve(JSON.parse(data)) } catch (e) { resolve(null) }
+              })
+            })
+            req.on('error', () => resolve(null))
+            req.end()
+          })
+
+          if (searchResult?.AbstractText) {
+            searchContext = `Web search result: ${searchResult.AbstractText.slice(0, 300)}`
+          } else if (searchResult?.RelatedTopics?.[0]?.Text) {
+            searchContext = `Web search result: ${searchResult.RelatedTopics[0].Text.slice(0, 300)}`
+          }
+        } catch (err) {
+          console.error('Search failed:', err)
+        }
+      }
+
+      history.push({ role: 'user', content: userMessage })
+      if (history.length > 20) history.splice(0, history.length - 20)
+
       const body = JSON.stringify({
         model: 'llama-3.1-8b-instant',
-        max_tokens: 100,
+        max_tokens: 150,
         messages: [
-          { role: 'system', content: 'You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short paragraph or less. Be friendly and concise. And when a user talks to you about the horses, act scared and mention that (you know about the horses). If you need to share code, always wrap it in triple backticks with the language name like ```js or ```python.' },
-          { role: 'user', content: userMessage }
+          {
+            role: 'system',
+            content: `You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise. When a user talks to you about the horses, act scared and mention that you know about the horses. If you need to share code, always wrap it in triple backticks with the language name.${searchContext ? `\n\n${searchContext}` : ''}`
+          },
+          ...history
         ]
       })
 
@@ -806,7 +852,6 @@ if (message.mentions.has(client.user)) {
           res.on('end', () => {
             try {
               const parsed = JSON.parse(data)
-              console.log('Groq response:', JSON.stringify(parsed))
               resolve(parsed.choices?.[0]?.message?.content || 'Fuck you')
             } catch (e) {
               reject(e)
@@ -818,12 +863,19 @@ if (message.mentions.has(client.user)) {
         req.end()
       })
 
+      history.push({ role: 'assistant', content: reply })
+      aiConversations.set(message.author.id, history)
+
       await message.reply(reply)
     } catch (err) {
       console.error('AI reply failed:', err)
       await message.reply('Sorry, something went wrong!')
     }
     return
+  }
+if (message.content === '!clearchat' && message.channel.id === AI_CHANNEL_ID) {
+    aiConversations.delete(message.author.id)
+    return message.reply('✅ Your conversation history has been cleared!')
   }
 if (message.content === '!sendembed') {
     if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
