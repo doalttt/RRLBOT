@@ -15,6 +15,7 @@ const STAFF_ROLE_ID = '1491683467917000795'
 const DEV_ROLE_ID = '1491683215549923459'
 const SENIOR_STAFF_ROLE_ID = '1491683379194888366'
 const TICKET_CATEGORY_ID = '1517445573735612549'
+const STATUS_CHANNEL_ID = '1525065072509063238'
 const TICKET_STAFF_ROLE = STAFF_ROLE_ID
 const TICKET_DEV_ROLE = DEV_ROLE_ID
 const PING_ROLE_ID = '1495670066203590796'
@@ -119,7 +120,14 @@ const commands = [
     .setName('message')
     .setDescription('Send a plain DM to a user')
     .addUserOption(option => option.setName('user').setDescription('User to message').setRequired(true))
-    .addStringOption(option => option.setName('content').setDescription('Message content').setRequired(true))
+    .addStringOption(option => option.setName('content').setDescription('Message content').setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('adduser')
+    .setDescription('Add a user to the current ticket')
+    .addUserOption(option => option.setName('user').setDescription('User to add').setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('reopenticket')
+    .setDescription('Reopen a closed ticket')
 ].map(command => command.toJSON())
 
 client.once('clientReady', async () => {
@@ -131,6 +139,13 @@ client.once('clientReady', async () => {
     console.log('Slash commands registered!')
   } catch (error) {
     console.error('Failed to register commands:', error)
+  }
+
+  try {
+    const statusChannel = client.channels.cache.get(STATUS_CHANNEL_ID)
+    if (statusChannel) await statusChannel.setName('LegacyBot (Online)')
+  } catch (err) {
+    console.error('Failed to set status channel:', err)
   }
 })
 
@@ -167,7 +182,7 @@ client.on('interactionCreate', async interaction => {
         topic: `ticket-${interaction.user.id}`,
         permissionOverwrites: [
           { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
-          { id: interaction.user.id, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
+          { id: interaction.user.id, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AttachFiles', 'EmbedLinks', 'UseExternalEmojis', 'AddReactions'] },
           { id: TICKET_STAFF_ROLE, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
           { id: TICKET_DEV_ROLE, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
           { id: client.user.id, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] }
@@ -189,9 +204,15 @@ client.on('interactionCreate', async interaction => {
               {
                 type: ComponentType.ActionRow,
                 components: [
-                  { type: ComponentType.Button, label: 'Close With Reason', style: ButtonStyle.Primary, custom_id: `ticket_close_${channel.id}`, emoji: { name: '📝' } },
-                  { type: ComponentType.Button, label: 'Close', style: ButtonStyle.Secondary, custom_id: `ticket_close_reason_${channel.id}`, emoji: { name: '🔒' } }, 
+                  {
+                type: ComponentType.ActionRow,
+                components: [
+                  { type: ComponentType.Button, label: 'Close', style: ButtonStyle.Secondary, custom_id: `ticket_close_${channel.id}`, emoji: { name: '🔒' } },
+                  { type: ComponentType.Button, label: 'Close With Reason', style: ButtonStyle.Primary, custom_id: `ticket_close_reason_${channel.id}`, emoji: { name: '📝' } },
+                  { type: ComponentType.Button, label: 'Reopen', style: ButtonStyle.Success, custom_id: `ticket_reopen_${channel.id}`, emoji: { name: '🔓' } },
                   { type: ComponentType.Button, label: 'Delete (Admin Only)', style: ButtonStyle.Danger, custom_id: `ticket_delete_${channel.id}`, emoji: { name: '🗑️' } }
+                ]
+              }
                 ]
               }
             ]
@@ -263,6 +284,31 @@ client.on('interactionCreate', async interaction => {
     }, 3000)
     return
   }
+  if (interaction.isButton() && interaction.customId.startsWith('ticket_reopen_')) {
+    const member = interaction.member
+    if (!member.roles.cache.has(TICKET_STAFF_ROLE) && !member.roles.cache.has(TICKET_DEV_ROLE)) {
+      return interaction.reply({ content: 'You do not have permission to reopen tickets.', ephemeral: true })
+    }
+
+    const ticketOwnerId = interaction.channel.topic?.replace('ticket-', '')
+
+    await interaction.channel.permissionOverwrites.edit(interaction.channel.guild.roles.everyone, { ViewChannel: false })
+
+    if (ticketOwnerId) {
+      await interaction.channel.permissionOverwrites.edit(ticketOwnerId, {
+        ViewChannel: true,
+        SendMessages: true,
+        ReadMessageHistory: true,
+        AttachFiles: true,
+        EmbedLinks: true,
+        UseExternalEmojis: true,
+        AddReactions: true
+      }).catch(() => {})
+    }
+
+    await interaction.reply({ content: '🔓 Ticket has been reopened.' })
+    return
+  }
 
   if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_close_reason_modal_')) {
     const reason = interaction.fields.getTextInputValue('close_reason_input')
@@ -274,6 +320,63 @@ client.on('interactionCreate', async interaction => {
     if (ticketOwnerId) {
       await interaction.channel.permissionOverwrites.edit(ticketOwnerId, { ViewChannel: false }).catch(() => {})
     }
+    return
+  }
+
+  if (interaction.isChatInputCommand() && interaction.commandName === 'adduser') {
+    if (!hasStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true })
+    }
+
+    if (!interaction.channel.topic?.startsWith('ticket-')) {
+      return interaction.reply({ content: '❌ This command can only be used inside a ticket channel.', ephemeral: true })
+    }
+
+    const target = interaction.options.getUser('user')
+
+    try {
+      await interaction.channel.permissionOverwrites.edit(target.id, {
+        ViewChannel: true,
+        SendMessages: true,
+        ReadMessageHistory: true,
+        AttachFiles: true,
+        EmbedLinks: true,
+        UseExternalEmojis: true,
+        AddReactions: true
+      })
+      await interaction.reply({ content: `✅ Added <@${target.id}> to the ticket.` })
+    } catch (err) {
+      await interaction.reply({ content: '❌ Failed to add user to the ticket.', ephemeral: true })
+    }
+    return
+  }
+
+  if (interaction.isChatInputCommand() && interaction.commandName === 'reopenticket') {
+    if (!hasStaffRole(interaction.member)) {
+      return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true })
+    }
+
+    if (!interaction.channel.topic?.startsWith('ticket-')) {
+      return interaction.reply({ content: '❌ This command can only be used inside a ticket channel.', ephemeral: true })
+    }
+
+    const ticketOwnerId = interaction.channel.topic.replace('ticket-', '')
+
+    await interaction.channel.permissionOverwrites.edit(interaction.channel.guild.roles.everyone, { ViewChannel: false })
+
+    if (ticketOwnerId) {
+      await interaction.channel.permissionOverwrites.edit(ticketOwnerId, {
+        ViewChannel: true,
+        SendMessages: true,
+        ReadMessageHistory: true,
+        AttachFiles: true,
+        EmbedLinks: true,
+        UseExternalEmojis: true,
+        AddReactions: true
+      }).catch(() => {})
+    }
+
+    await interaction.reply({ content: '🔓 Ticket has been reopened.' })
     return
   }
 
@@ -1115,4 +1218,11 @@ process.on('unhandledRejection', error => {
   console.error('Unhandled promise rejection:', error)
 })
 // toklen
+process.on('SIGTERM', async () => {
+  try {
+    const statusChannel = client.channels.cache.get(STATUS_CHANNEL_ID)
+    if (statusChannel) await statusChannel.setName('LegacyBot (Offline)')
+  } catch (err) {}
+  process.exit(0)
+})
 client.login(process.env.DISCORD_TOKEN)
