@@ -1024,34 +1024,6 @@ const reply = await new Promise((resolve, reject) => {
   req.end()
 })
 
-      const reply = await new Promise((resolve, reject) => {
-        const req = https.request({
-          hostname: 'api.groq.com',
-          path: '/openai/v1/chat/completions',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-            'Content-Length': Buffer.byteLength(body)
-          }
-        }, res => {
-          let data = ''
-          res.on('data', chunk => data += chunk)
-          res.on('end', () => {
-            try {
-              const parsed = JSON.parse(data)
-              console.log('Groq raw response:', JSON.stringify(parsed))
-              resolve(parsed.choices?.[0]?.message?.content || parsed.error?.message || 'Sorry, something went wrong!')
-            } catch (e) {
-              reject(e)
-            }
-          })
-        })
-        req.on('error', reject)
-        req.write(body)
-        req.end()
-      })
-
       history.push({ role: 'assistant', content: reply })
       aiConversations.set(message.author.id, history)
 
