@@ -781,7 +781,7 @@ if (message.mentions.has(client.user)) {
     if (!userMessage) return message.reply('Hey! How can I help you?')
 
     try {
-      const imageTriggers = ['generate', 'make', 'draw', 'create', 'image', 'picture', 'photo', 'art']
+      const imageTriggers = ['generate', 'draw', 'image', 'picture', 'photo', 'art']
       const shouldGenerateImage = imageTriggers.some(t => userMessage.toLowerCase().includes(t))
 
       if (shouldGenerateImage) {
