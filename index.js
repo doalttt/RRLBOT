@@ -765,7 +765,7 @@ if (message.mentions.has(client.user)) {
 
     try {
       const body = JSON.stringify({
-        model: 'llama3-8b-8192',
+        model: 'llama-3.1-8b-instant',
         max_tokens: 100,
         messages: [
           { role: 'system', content: 'You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise.' },
