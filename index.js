@@ -808,7 +808,9 @@ if (message.mentions.has(client.user)) {
 
     try {
       const imageTriggers = ['generate', 'draw', 'image', 'picture', 'photo', 'art']
-      const shouldGenerateImage = imageTriggers.some(t => userMessage.toLowerCase().includes(t))
+      const hasOwnAttachment = message.attachments.size > 0
+      const isReplyingToAttachment = message.reference && userMessage.includes('That message has')
+      const shouldGenerateImage = !hasOwnAttachment && !isReplyingToAttachment && imageTriggers.some(t => message.content.replace(/<@!?[0-9]+>/g, '').trim().toLowerCase().includes(t))
 
       if (shouldGenerateImage) {
         try {
