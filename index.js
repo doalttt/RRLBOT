@@ -773,13 +773,8 @@ if (message.mentions.has(client.user)) {
     }
 
     if (message.channel.id === AI_CHANNEL_ID) {
-      try {
-        await message.delete()
-        await message.author.send(`I can't be used in <#${AI_CHANNEL_ID}>!`)
-      } catch (err) {}
       return
     }
-
     aiCooldowns.set(message.author.id, now)
 
     const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim()
