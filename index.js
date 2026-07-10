@@ -778,17 +778,32 @@ if (message.mentions.has(client.user)) {
     aiCooldowns.set(message.author.id, now)
 
     let userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim()
-    if (!userMessage) return message.reply('Hey! How can I help you?')
+    if (!userMessage && message.attachments.size === 0) return message.reply('Hey! How can I help you?')
+
+    const authorInfo = `[Message from ${message.author.username} (Display name: ${message.member?.displayName || message.author.username}, Account created: ${new Date(message.author.createdTimestamp).toDateString()}, Joined server: ${message.member?.joinedAt ? new Date(message.member.joinedAt).toDateString() : 'unknown'}, Avatar: ${message.author.displayAvatarURL()})]`
+
+    const attachmentInfo = message.attachments.size > 0
+      ? `[User attached ${message.attachments.size} file(s): ${message.attachments.map(a => `${a.name} (${a.contentType || 'unknown type'}) - ${a.url}`).join(', ')}]`
+      : ''
 
     if (message.reference) {
       try {
         const repliedTo = await message.channel.messages.fetch(message.reference.messageId)
         const repliedContent = repliedTo.content || '[no text content]'
         const repliedAuthor = repliedTo.author.username
-        userMessage = `[Replying to ${repliedAuthor}: "${repliedContent}"]\n${userMessage}`
+        const repliedDisplayName = repliedTo.member?.displayName || repliedTo.author.username
+        const repliedAvatar = repliedTo.author.displayAvatarURL()
+        const repliedJoined = repliedTo.member?.joinedAt ? new Date(repliedTo.member.joinedAt).toDateString() : 'unknown'
+        const repliedAttachments = repliedTo.attachments.size > 0
+          ? `[Replied message has ${repliedTo.attachments.size} attachment(s): ${repliedTo.attachments.map(a => `${a.name} (${a.contentType || 'unknown type'}) - ${a.url}`).join(', ')}]`
+          : ''
+        userMessage = `${authorInfo}\n${attachmentInfo}\n[Replying to ${repliedAuthor} (Display name: ${repliedDisplayName}, Joined: ${repliedJoined}, Avatar: ${repliedAvatar}): "${repliedContent}" ${repliedAttachments}]\n${userMessage}`
       } catch (err) {
         console.error('Failed to fetch replied message:', err)
+        userMessage = `${authorInfo}\n${attachmentInfo}\n${userMessage}`
       }
+    } else {
+      userMessage = `${authorInfo}\n${attachmentInfo}\n${userMessage}`
     }
 
     try {
