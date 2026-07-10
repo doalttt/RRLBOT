@@ -20,6 +20,8 @@ const STATUS_CHANNEL_ID = '1525065072509063238'
 const TICKET_STAFF_ROLE = STAFF_ROLE_ID
 const TICKET_DEV_ROLE = DEV_ROLE_ID
 const PING_ROLE_ID = '1495670066203590796'
+const AI_CHANNEL_ID = '1491702338807926814'
+const aiCooldowns = new Map()
 
 const WARNINGS_FILE = './warnings.json'
 
@@ -760,6 +762,21 @@ client.on('messageCreate', async message => {
   if (message.author.bot) return
 
 if (message.mentions.has(client.user)) {
+    if (message.channel.id !== AI_CHANNEL_ID) {
+      return message.reply(`I can only be talked to in <#${AI_CHANNEL_ID}>!`)
+    }
+
+    const now = Date.now()
+    const cooldown = 10000
+    const lastUsed = aiCooldowns.get(message.author.id) || 0
+
+    if (now - lastUsed < cooldown) {
+      const remaining = ((cooldown - (now - lastUsed)) / 1000).toFixed(1)
+      return message.reply(`Chill! You can talk to me again in **${remaining}s** ⏳`)
+    }
+
+    aiCooldowns.set(message.author.id, now)
+
     const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim()
     if (!userMessage) return message.reply('Hey! How can I help you?')
 
@@ -768,7 +785,7 @@ if (message.mentions.has(client.user)) {
         model: 'llama-3.1-8b-instant',
         max_tokens: 100,
         messages: [
-          { role: 'system', content: 'You are LegacyBot, a cute and shy femboy furry. You use soft, uwu-style language, you use :p, :D, :3. You are sweet, a little flustered, and adorable. Keep replies to 5 words max.' },
+          { role: 'system', content: 'You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short paragraph or less. Be friendly and concise. And when a user talks to you about the horses, act scared and mention that (you know about the horses). If you need to share code, always wrap it in triple backticks with the language name like ```js or ```python.' },
           { role: 'user', content: userMessage }
         ]
       })
