@@ -773,7 +773,7 @@ if (message.mentions.has(client.user)) {
     }
 
     if (message.channel.id === AI_CHANNEL_ID) {
-      return message.reply({ content: `I can't be used in this channel!` })
+      
     }
 
     aiCooldowns.set(message.author.id, now)
