@@ -873,9 +873,9 @@ if (message.mentions.has(client.user)) {
     }
     return
   }
-if (message.content === '!clearchat' && message.channel.id === AI_CHANNEL_ID) {
+if (message.content === '!clearchat' && message.channel.id != AI_CHANNEL_ID) {
     aiConversations.delete(message.author.id)
-    return message.reply('✅ Your conversation history has been cleared!')
+    return message.reply('I cleared your conversation history!')
   }
 if (message.content === '!sendembed') {
     if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
