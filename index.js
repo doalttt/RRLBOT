@@ -769,7 +769,7 @@ if (message.mentions.has(client.user)) {
 
     if (now - lastUsed < cooldown) {
       const remaining = ((cooldown - (now - lastUsed)) / 1000).toFixed(1)
-      return message.reply(`Chill! You can talk to me again in **${remaining}s** ⏳`)
+      return message.reply(`Chill! You can talk to me again in **${remaining}s**`)
     }
 
     if (message.channel.id === AI_CHANNEL_ID) {
@@ -874,7 +874,7 @@ if (message.mentions.has(client.user)) {
       if (history.length > 20) history.splice(0, history.length - 20)
 
       const body = JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'groq/compound-mini',
         max_tokens: 150,
         messages: [
           {
