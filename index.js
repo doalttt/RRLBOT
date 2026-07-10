@@ -874,7 +874,7 @@ if (message.mentions.has(client.user)) {
       if (history.length > 20) history.splice(0, history.length - 20)
 
       const body = JSON.stringify({
-        model: 'groq/compound-mini',
+        model: 'llama-3.1-8b-instant',
         max_tokens: 150,
         messages: [
           {
