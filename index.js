@@ -782,6 +782,45 @@ if (message.mentions.has(client.user)) {
     if (!userMessage) return message.reply('Hey! How can I help you?')
 
     try {
+      const imageTriggers = ['generate', 'make', 'draw', 'create', 'image', 'picture', 'photo', 'art']
+      const shouldGenerateImage = imageTriggers.some(t => userMessage.toLowerCase().includes(t))
+
+      if (shouldGenerateImage) {
+        try {
+          await message.channel.sendTyping()
+          const prompt = encodeURIComponent(userMessage)
+          const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=512&height=512&nologo=true`
+
+          const imageBuffer = await new Promise((resolve, reject) => {
+            const makeRequest = (url, redirectCount = 0) => {
+              if (redirectCount > 5) return reject(new Error('Too many redirects'))
+              const protocol = url.startsWith('https') ? require('https') : require('http')
+              protocol.get(url, res => {
+                if (res.statusCode === 301 || res.statusCode === 302) {
+                  return makeRequest(res.headers.location, redirectCount + 1)
+                }
+                const chunks = []
+                res.on('data', chunk => chunks.push(chunk))
+                res.on('end', () => resolve(Buffer.concat(chunks)))
+                res.on('error', reject)
+              }).on('error', reject)
+            }
+            makeRequest(imageUrl)
+          })
+
+          await message.reply({
+            files: [{
+              attachment: imageBuffer,
+              name: 'image.png'
+            }]
+          })
+        } catch (err) {
+          console.error('Image generation failed:', err)
+          await message.reply('❌ Failed to generate image, try again!')
+        }
+        return
+      }
+
       if (!aiConversations.has(message.author.id)) {
         aiConversations.set(message.author.id, [])
       }
@@ -830,7 +869,7 @@ if (message.mentions.has(client.user)) {
         messages: [
           {
             role: 'system',
-            content: `You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise. When a user talks to you about the horses, act scared and mention that you know about the horses. If you need to share code, always wrap it in triple backticks with the language name.${searchContext ? `\n\n${searchContext}` : ''}`
+            content: `You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise. And when asked about RecRoom Legacy know this, recroom legacy is a rec room revival server that is currently in the proccess of making rec room 2021 happen, the ceo is (Faith/Faithlym) and rec room legacy orginated from (KDrec) made by @doalt and @faithlym which then led to rec legacy! When a user talks to you about the horses, act scared and mention that you know about the horses. If you need to share code, always wrap it in triple backticks with the language name.${searchContext ? `\n\n${searchContext}` : ''}`
           },
           ...history
         ]
@@ -862,16 +901,6 @@ if (message.mentions.has(client.user)) {
         req.write(body)
         req.end()
       })
-
-      const imageTriggers = ['generate', 'make', 'draw', 'create', 'image', 'picture', 'photo', 'art']
-      const shouldGenerateImage = imageTriggers.some(t => userMessage.toLowerCase().includes(t))
-
-      if (shouldGenerateImage) {
-        const prompt = encodeURIComponent(userMessage)
-        const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=512&height=512&nologo=true`
-        await message.reply({ content: `🎨 Here's your image!`, files: [imageUrl] })
-        return
-      }
 
       history.push({ role: 'assistant', content: reply })
       aiConversations.set(message.author.id, history)
