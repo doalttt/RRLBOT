@@ -996,7 +996,7 @@ if (message.mentions.has(client.user)) {
       await message.channel.sendTyping()
 
       const body = JSON.stringify({
-        model: 'qwen/qwen3-32b',
+        model: 'allam-2-7b',
         max_tokens: 150,
         messages: [
           {
