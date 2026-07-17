@@ -24,6 +24,17 @@ const aiConversations = new Map()
 const aiCooldowns = new Map()
 const AI_CHANNEL_ID = '1491702338807926814'
 
+const AI_MOD_ROLES = [
+  '1491683215549923459',
+  '1498857785595658323',
+  '1509081188621353001',
+  '1509081803149803660'
+]
+
+function hasAiModRole(member) {
+  return AI_MOD_ROLES.some(id => member.roles.cache.has(id))
+}
+
 const WARNINGS_FILE = './warnings.json'
 
 function loadWarnings() {
@@ -846,6 +857,112 @@ if (message.mentions.has(client.user)) {
       const imageTriggers = ['generate', 'draw', 'image', 'picture', 'photo', 'art']
       const shouldGenerateImage = !hasOwnAttachment && !isReplyingToAttachment && imageTriggers.some(t => rawContent.includes(t))
 
+      if (hasAiModRole(message.member)) {
+        const targetMember = message.reference
+          ? await message.channel.messages.fetch(message.reference.messageId).then(m => message.guild.members.fetch(m.author.id)).catch(() => null)
+          : message.mentions.members?.filter(m => m.id !== client.user.id).first() || null
+
+        const modBody = JSON.stringify({
+          max_tokens: 200,
+          messages: [
+            {
+              role: 'system',
+              content: `You are a moderation assistant. Analyze the following message and determine if it is a moderation action request. If it is, respond ONLY with a JSON object in this exact format with no other text:
+{"action":"ban"|"kick"|"mute"|"unmute"|"nickname"|"warn"|"none","duration":null|number_of_minutes,"reason":"reason string","nickname":null|"new name"}
+If it is NOT a moderation request, respond with: {"action":"none"}
+Actions: ban=permanent ban, kick=remove from server, mute=timeout, unmute=remove timeout, nickname=change display name, warn=add warning, none=not a mod action.
+For ban/kick/mute always provide a clear professional reason. For mute always provide duration in minutes.`
+            },
+            { role: 'user', content: rawContent }
+          ]
+        })
+
+        const modResponse = await new Promise((resolve, reject) => {
+          const req = https.request({
+            hostname: 'api.cloudflare.com',
+            path: `/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/meta/llama-3.1-8b-instruct`,
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.CLOUDFLARE_API_KEY}`,
+              'Content-Length': Buffer.byteLength(modBody)
+            }
+          }, res => {
+            let data = ''
+            res.on('data', chunk => data += chunk)
+            res.on('end', () => {
+              try {
+                const parsed = JSON.parse(data)
+                resolve(parsed.result?.response || '{"action":"none"}')
+              } catch (e) { resolve('{"action":"none"}') }
+            })
+          })
+          req.on('error', () => resolve('{"action":"none"}'))
+          req.write(modBody)
+          req.end()
+        })
+
+        let modAction
+        try {
+          const cleaned = modResponse.replace(/```json|```/g, '').trim()
+          const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+          modAction = jsonMatch ? JSON.parse(jsonMatch[0]) : { action: 'none' }
+        } catch (e) {
+          modAction = { action: 'none' }
+        }
+
+        console.log('Mod action detected:', JSON.stringify(modAction))
+
+        if (modAction.action !== 'none' && targetMember) {
+          try {
+            switch (modAction.action) {
+              case 'ban':
+                try { await targetMember.user.send(`🔨 You have been banned from **${message.guild.name}**.\n**Reason:** ${modAction.reason}`) } catch (e) {}
+                await targetMember.ban({ reason: modAction.reason })
+                await message.reply(`Banned **${targetMember.user.username}**.\n**Reason:** ${modAction.reason}`)
+                break
+
+              case 'kick':
+                try { await targetMember.user.send(`👢 You have been kicked from **${message.guild.name}**.\n**Reason:** ${modAction.reason}`) } catch (e) {}
+                await targetMember.kick(modAction.reason)
+                await message.reply(`Kicked **${targetMember.user.username}**.\n**Reason:** ${modAction.reason}`)
+                break
+
+              case 'mute':
+                const duration = (modAction.duration || 10) * 60 * 1000
+                await targetMember.timeout(duration, modAction.reason)
+                await message.reply(`Muted **${targetMember.user.username}** for **${modAction.duration || 10} minutes**.\n**Reason:** ${modAction.reason}`)
+                break
+
+              case 'unmute':
+                await targetMember.timeout(null)
+                await message.reply(`Unmuted **${targetMember.user.username}**.`)
+                break
+
+              case 'nickname':
+                const newNick = modAction.nickname || null
+                await targetMember.setNickname(newNick, 'AI mod action')
+                await message.reply(`Changed **${targetMember.user.username}**'s nickname to **${newNick || 'none'}**.`)
+                break
+
+              case 'warn':
+                const warnCount = addWarning(targetMember.id, modAction.reason, message.author.id)
+                try { await targetMember.user.send(`⚠️ You have been warned in **${message.guild.name}**.\n**Reason:** ${modAction.reason}\n**Total Warnings:** ${warnCount}`) } catch (e) {}
+                await message.reply(`Warned **${targetMember.user.username}**.\n**Reason:** ${modAction.reason}\n**Total Warnings:** ${warnCount}`)
+                break
+            }
+            return
+          } catch (err) {
+            console.error('AI mod action failed:', err)
+            await message.reply(`Failed to execute ${modAction.action} — the target may have a higher role than the bot.`)
+            return
+          }
+        } else if (modAction.action !== 'none' && !targetMember) {
+          await message.reply(`I couldn't find a target user. Reply to their message or mention them.`)
+          return
+        }
+      }
+
       if (shouldGenerateImage) {
         try {
           await message.channel.sendTyping()
@@ -997,7 +1114,7 @@ if (message.mentions.has(client.user)) {
   messages: [
     {
       role: 'system',
-      content: `You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise. You are aware of the server, the user, recent messages, and bot stats provided in the context. When asked about server info, members, uptime, memory, or user roles use the context provided. When asked about RecRoom Legacy: it is a rec room revival server making rec room 2021 happen, the CEO is Faith/Faithlym, it originated from KDrec made by @doalt and @faithlym. When a user talks about the horses act scared and say you know about the horses. Wrap code in triple backticks with language name. You can NOT do @everyone AT ALL.${searchContext ? `\n\n${searchContext}` : ''}`
+      content: `You are LegacyBot, a helpful assistant for the Rec Room Legacy Discord server. Reply in one short sentence or less. Be friendly and concise. You are aware of the server, the user, recent messages, and bot stats provided in the context. When asked about server info, members, uptime, memory, or user roles use the context provided. When asked about RecRoom Legacy: it is a rec room revival server making rec room 2021 happen, the CEO is Faith/Faithlym, it originated from KDrec made by @doalt and @faithlym. You can also ban people, kick people, and do other moderation commands, please make sure you do not accidently ban anyone for the wrong reason, and only developer role and higher has access to you, always make sure to check with the person that trying to ban the other user or do a moderation action before you go through with it.${searchContext ? `\n\n${searchContext}` : ''}`
     },
     ...history
   ]
