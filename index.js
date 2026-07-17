@@ -713,6 +713,12 @@ if (interaction.isButton()) {
       }
 
       await member.roles.add(role)
+
+      const unverifiedRole = interaction.guild.roles.cache.get('1466242861346590990')
+      if (unverifiedRole && member.roles.cache.has('1466242861346590990')) {
+        await member.roles.remove(unverifiedRole).catch(() => {})
+      }
+
       return interaction.reply({ content: '✅ You have been verified! Welcome to the server.', ephemeral: true })
     }
 
