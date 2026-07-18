@@ -779,6 +779,11 @@ client.on('guildMemberAdd', async member => {
 client.on('messageCreate', async message => {
   if (message.author.bot) return
 
+  if (message.content === '!clearchat') {
+    aiConversations.delete(message.author.id)
+    return message.reply('✅ Cleared your conversation history!')
+  }
+
 if (message.mentions.has(client.user)) {
     const now = Date.now()
     const cooldown = 100
@@ -1156,10 +1161,6 @@ const reply = await new Promise((resolve, reject) => {
       await message.reply('Sorry, something went wrong!')
     }
     return
-  }
-if (message.content === '!clearchat') {
-    aiConversations.delete(message.author.id)
-    return message.reply('I cleared your conversation history!')
   }
 if (message.content === '!sendembed') {
     if (!hasStaffRole(message.member)) return message.reply({ content: 'You do not have permission to use this command.' })
