@@ -781,7 +781,7 @@ client.on('messageCreate', async message => {
 
 if (message.mentions.has(client.user)) {
     const now = Date.now()
-    const cooldown = 6500
+    const cooldown = 100
     const lastUsed = aiCooldowns.get(message.author.id) || 0
 
     if (now - lastUsed < cooldown) {
@@ -1157,7 +1157,7 @@ const reply = await new Promise((resolve, reject) => {
     }
     return
   }
-if (message.content === '!clearchat' && message.channel.id != AI_CHANNEL_ID) {
+if (message.content === '!clearchat') {
     aiConversations.delete(message.author.id)
     return message.reply('I cleared your conversation history!')
   }
