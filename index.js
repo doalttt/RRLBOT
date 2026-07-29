@@ -921,41 +921,34 @@ For ban/kick/mute always provide a clear professional reason. For mute always pr
 
         if (modAction.action !== 'none' && targetMember) {
           try {
-            switch (modAction.action) {
-              case 'ban':
-                try { await targetMember.user.send(`🔨 You have been banned from **${message.guild.name}**.\n**Reason:** ${modAction.reason}`) } catch (e) {}
-                await targetMember.ban({ reason: modAction.reason })
-                await message.reply(`Banned **${targetMember.user.username}**.\n**Reason:** ${modAction.reason}`)
-                break
+            if (modAction.action === 'ban') {
+              try { await targetMember.user.send(`🔨 You have been banned from **${message.guild.name}**.\n**Reason:** ${modAction.reason}`) } catch (e) {}
+              await targetMember.ban({ reason: modAction.reason })
+              await message.reply(`Banned **${targetMember.user.username}**.\n**Reason:** ${modAction.reason}`)
 
-              case 'kick':
-                try { await targetMember.user.send(`👢 You have been kicked from **${message.guild.name}**.\n**Reason:** ${modAction.reason}`) } catch (e) {}
-                await targetMember.kick(modAction.reason)
-                await message.reply(`Kicked **${targetMember.user.username}**.\n**Reason:** ${modAction.reason}`)
-                break
+            } else if (modAction.action === 'kick') {
+              try { await targetMember.user.send(`👢 You have been kicked from **${message.guild.name}**.\n**Reason:** ${modAction.reason}`) } catch (e) {}
+              await targetMember.kick(modAction.reason)
+              await message.reply(`Kicked **${targetMember.user.username}**.\n**Reason:** ${modAction.reason}`)
 
-              case 'mute':
-                const duration = (modAction.duration || 10) * 60 * 1000
-                await targetMember.timeout(duration, modAction.reason)
-                await message.reply(`Muted **${targetMember.user.username}** for **${modAction.duration || 10} minutes**.\n**Reason:** ${modAction.reason}`)
-                break
+            } else if (modAction.action === 'mute') {
+              const muteDuration = (modAction.duration || 10) * 60 * 1000
+              await targetMember.timeout(muteDuration, modAction.reason)
+              await message.reply(`Muted **${targetMember.user.username}** for **${modAction.duration || 10} minutes**.\n**Reason:** ${modAction.reason}`)
 
-              case 'unmute':
-                await targetMember.timeout(null)
-                await message.reply(`Unmuted **${targetMember.user.username}**.`)
-                break
+            } else if (modAction.action === 'unmute') {
+              await targetMember.timeout(null)
+              await message.reply(`Unmuted **${targetMember.user.username}**.`)
 
-              case 'nickname':
-                const newNick = modAction.nickname || null
-                await targetMember.setNickname(newNick, 'AI mod action')
-                await message.reply(`Changed **${targetMember.user.username}**'s nickname to **${newNick || 'none'}**.`)
-                break
+            } else if (modAction.action === 'nickname') {
+              const newNick = modAction.nickname || null
+              await targetMember.setNickname(newNick, 'AI mod action')
+              await message.reply(`Changed **${targetMember.user.username}**'s nickname to **${newNick || 'none'}**.`)
 
-              case 'warn':
-                const warnCount = addWarning(targetMember.id, modAction.reason, message.author.id)
-                try { await targetMember.user.send(`⚠️ You have been warned in **${message.guild.name}**.\n**Reason:** ${modAction.reason}\n**Total Warnings:** ${warnCount}`) } catch (e) {}
-                await message.reply(`Warned **${targetMember.user.username}**.\n**Reason:** ${modAction.reason}\n**Total Warnings:** ${warnCount}`)
-                break
+            } else if (modAction.action === 'warn') {
+              const warnCount = addWarning(targetMember.id, modAction.reason, message.author.id)
+              try { await targetMember.user.send(`⚠️ You have been warned in **${message.guild.name}**.\n**Reason:** ${modAction.reason}\n**Total Warnings:** ${warnCount}`) } catch (e) {}
+              await message.reply(`Warned **${targetMember.user.username}**.\n**Reason:** ${modAction.reason}\n**Total Warnings:** ${warnCount}`)
             }
             return
           } catch (err) {
@@ -967,7 +960,6 @@ For ban/kick/mute always provide a clear professional reason. For mute always pr
           await message.reply(`I couldn't find a target user. Reply to their message or mention them.`)
           return
         }
-      }
 
       if (shouldGenerateImage) {
         try {
