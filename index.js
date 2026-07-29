@@ -960,6 +960,7 @@ For ban/kick/mute always provide a clear professional reason. For mute always pr
           await message.reply(`I couldn't find a target user. Reply to their message or mention them.`)
           return
         }
+      }
 
       if (shouldGenerateImage) {
         try {
